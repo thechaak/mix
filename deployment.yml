@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms-springboot-mysql-kubernetes
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ms-springboot-mysql-kubernetes
+  template:
+    metadata:
+      annotations:     
+        prometheus.io/scrape: "true"
+        prometheus.io/name: 'geenrated-app'
+        prometheus.io/port: "8080"
+        prometheus.io/path: /actuator/prometheus
+      labels:
+        app: ms-springboot-mysql-kubernetes
+    spec:                     
+      nodeSelector:
+        "agentpool": usernp4
+      tolerations:
+      - key: "sku"
+        operator: "Equal"
+        value: "usernp4"
+        effect: "NoSchedule"
+      containers:
+      - name: ms-springboot-mysql-kubernetes
+        image: vidxlcidacr.azurecr.io/ms-springboot-mysql-kubernetes:1.2
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /actuator/info
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        livenessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /actuator/info
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 20
+          successThreshold: 1
+          timeoutSeconds: 15
+        resources:
+          requests:
+            cpu: 400m
+            memory: 512Mi
+          limits:
+            cpu: 475m
+            memory: 1024Mi
+        ports:
+        - containerPort: 6381
+          name: micro
+        env:
+        - name: DB_HOST   # Setting Database host address from configMap
+          valueFrom: 
+            configMapKeyRef:
+              name: mysql-db-conf  # name of configMap
+              key: host
+        - name: DB_NAME  # Setting Database name from configMap
+          valueFrom:
+            configMapKeyRef:
+              name: mysql-db-conf 
+              key: name
+        - name: DB_USERNAME  # Setting Database username from Secret
+          valueFrom:
+            secretKeyRef:
+              name: mysql-db-credentials # Secret Name
+              key: username
+        - name: DB_PASSWORD # Setting Database password from Secret
+          valueFrom:
+            secretKeyRef:
+              name: mysql-db-credentials
+              key: password
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ms-springboot-mysql-kubernetes
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+spec:
+  type: LoadBalancer
+#  loadBalancerIP: 172.21.80.69
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: ms-springboot-mysql-kubernetes
