@@ -1,0 +1,124 @@
+  pipeline {
+    agent {
+        label 'linux64_lfjesl001406'
+    }
+    environment {
+        PYTHONPATH = "."
+        ART_URL = "${ARTIFACTORY_URL}"
+        ART_CREDS = credentials('artifactory-repo-cleaner')
+        ART_USER = "${ART_CREDS_USR}"
+        ART_PASS = "${ART_CREDS_PSW}"
+        pathPatternsString = PATH_PATTERNS.join(' ')
+    }
+
+    parameters {
+        string(name: 'ARTIFACTORY_URL', description: 'Artifactory instance URL', defaultValue: params.ARTIFACTORY_URL)
+        string(name: 'REPOSITORY', description: 'Repository', defaultValue: params.REPOSITORY)
+        string(name: 'CREATED_BEFORE', description: 'Created before N days. 0 value is empty and is ignored by the Artifactory Manager.', defaultValue: params.CREATED_BEFORE ?: '0')
+        string(name: 'DOWNLOADED_BEFORE', description: 'Downloaded last before N days 0 value is empty and is ignored by the Artifactory Manager.', defaultValue: params.DOWNLOADED_BEFORE ?: '0')
+        string(name: 'NAME_PATTERN', description: 'Name pattern that has to match. Empty is ignored by the Artifactory Manager.', defaultValue: params.NAME_PATTERN ?: 'none')
+        string(name: 'PATH_PATTERN', description: 'Path pattern that has to match. Empty is ignored by the Artifactory Manager.', defaultValue: params.PATH_PATTERN ?: 'none')
+        string(name: 'WHITELIST_FILE', description: 'Whitelisted packages. Empty is ignored by the Artifactory Manager.', defaultValue: params.WHITELIST_FILE ?: 'none')
+        booleanParam(name: 'EXCLUDE_LATEST', description: 'Exclude latest version [false/true]', defaultValue: params.EXCLUDE_LATEST ?: false)
+        booleanParam(name: 'DELETE', description: 'Cleanup found packages [false/true]', defaultValue: false)
+    }
+    stages {
+        stage('chekcout') {
+            steps {
+            git url: 'ssh://git@bitbucket.sits.avaloq.net/scm/avaloq-artifactory-manager.git', branch: 'master'
+            }
+        }
+        stage('Install dependencies') {
+            steps {
+                sh '''
+                # remove existing virtual environments
+                rm -rf .venv
+
+                # create Python virtual environment
+                /usr/local/bin/python3.9 -m venv .venv
+                source .venv/bin/activate
+
+                # install dependencies
+                pip install -r requirements.txt
+                '''
+            }
+        }
+
+        stage('Find packages') {
+            
+            steps {
+                sh """
+                    source .venv/bin/activate
+
+                    # build the query
+                    query=''
+
+                    if [[ \"${CREATED_BEFORE}\" && \"${CREATED_BEFORE}\" -gt 0 ]]; then
+                        query=\"\$query --created-before ${CREATED_BEFORE}\"
+                    fi
+
+                    if [[ \"${DOWNLOADED_BEFORE}\" && \"${DOWNLOADED_BEFORE}\" -gt 0 ]]; then
+                        query=\"\$query --downloaded-before ${DOWNLOADED_BEFORE}\"
+                    fi
+
+                    if [ -n \"${NAME_PATTERN}\" ] && [ \"${NAME_PATTERN}\" != \"none\" ]; then
+                        query=\"\$query --name-pattern ${NAME_PATTERN}\"
+                    fi
+
+                    if [ -n \"${pathPatternsString}\" ] && [ \"${pathPatternsString}\" != \"none\" ]; then
+                        query=\"\$query --path-pattern ${pathPatternsString}\"
+                    fi
+
+                    if [ -n \"${WHITELIST_FILE}\" ] && [ \"${WHITELIST_FILE}\" != \"none\" ]; then
+                        query=\"\$query --whitelist-file ${WHITELIST_FILE}\"
+                    fi
+
+                    if [[ -n \"${EXCLUDE_LATEST}\" && $EXCLUDE_LATEST == true ]]; then
+                        query=\"\$query --exclude-latest\"
+                    fi
+
+                    # create empty file
+                    rm -rf cleanup-file-list.txt
+                    touch cleanup-file-list.txt
+                    python artifactory_manager status
+                    # search for packages to cleanup
+                    python artifactory_manager package search ${REPOSITORY} --output-file cleanup-file-list.txt \${query}
+                """
+            }
+        }
+
+        stage ('Cleanup') {
+            when {
+                expression {
+                    return params.DELETE
+                }
+            }
+            steps {
+                sh """
+                source .venv/bin/activate
+
+                # cleaning up packages
+                python artifactory_manager package delete ${REPOSITORY} --input-file cleanup-file-list.txt --full-output --force
+                """
+            }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'cleanup-file-list.txt'
+            sh '''
+            source .venv/bin/activate
+
+            # clear login
+            python artifactory_manager logout --clean --force
+            '''
+            //cleanWs()
+        }
+        failure {
+            emailext body: "See ${env.JOB_URL}${env.BUILD_NUMBER}",
+            to: "devops@avaloq.com",
+            subject: "Artifactory housekeeping job ${env.JOB_NAME} #${env.BUILD_NUMBER} failed"
+        }
+    }
+}
