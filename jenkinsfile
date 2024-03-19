@@ -51,7 +51,6 @@ cleanFolderOnAgentsInLabel(labelName)
 
 *******************************************************************************
 
-
 def isAnyJobRunningOnAgent(agentName) {
     def computer = Jenkins.instance.getComputer(agentName)
     if (computer != null) {
@@ -64,35 +63,40 @@ def isAnyJobRunningOnAgent(agentName) {
     return false
 }
 
-def getAgentsInLabel(labelName) {
-    def agentsInLabel = []
+def getAgentsInLabels(labelNames) {
+    def agentsInLabels = []
     def nodes = Jenkins.instance.getNodes()
     nodes.each { node ->
-        if (node.getAssignedLabels().find { it.getName() == labelName }) {
-            agentsInLabel.add(node.getNodeName())
+        labelNames.each { labelName ->
+            if (node.getAssignedLabels().find { it.getName() == labelName }) {
+                agentsInLabels.add(node.getNodeName())
+            }
         }
     }
-    return agentsInLabel
+    return agentsInLabels
 }
 
-def getFreeAgentsInLabel(labelName) {
-    def freeAgentsInLabel = []
-    def agentsInLabel = getAgentsInLabel(labelName)
-    agentsInLabel.each { agentName ->
+def getFreeAgentsInLabels(labelNames) {
+    def freeAgentsInLabels = []
+    def agentsInLabels = getAgentsInLabels(labelNames)
+    agentsInLabels.each { agentName ->
         if (!isAnyJobRunningOnAgent(agentName)) {
-            freeAgentsInLabel.add(agentName)
+            freeAgentsInLabels.add(agentName)
         }
     }
-    return freeAgentsInLabel
+    return freeAgentsInLabels
 }
 
-def cleanFolderOnAgentsInLabel(labelName) {
-    def freeAgentsInLabel = getFreeAgentsInLabel(labelName)
-    println "Free agents in label $labelName for cleaning: $freeAgentsInLabel"
+def cleanFolderOnAgentsInLabels(labelNames) {
+    def freeAgentsInLabels = getFreeAgentsInLabels(labelNames)
+    println "Free agents in labels $labelNames for cleaning: $freeAgentsInLabels"
     
-    freeAgentsInLabel.each { agentName ->
+    freeAgentsInLabels.each { agentName ->
         println "Cleaning folder on agent: $agentName"
         // Add your folder removal logic here for the specified agent
     }
 }
+
+def labelNames = ["label1", "label2"] // Replace with your label names
+cleanFolderOnAgentsInLabels(labelNames)
 
