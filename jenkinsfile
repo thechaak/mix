@@ -100,9 +100,7 @@ def cleanFolderOnAgentsInLabels(labelNames) {
 def labelNames = ["label1", "label2"] // Replace with your label names
 cleanFolderOnAgentsInLabels(labelNames)
 ****************************************************************************************
-
-
-
+import hudson.model.*
 import hudson.FilePath
 
 def isAnyJobRunningOnAgent(agentName) {
@@ -119,8 +117,8 @@ def isAnyJobRunningOnAgent(agentName) {
 
 def listAndCleanFolderOnAgentsInLabels(labelNames) {
     def nodes = Jenkins.instance.getNodes()
-    nodes.each { node ->
-        labelNames.each { labelName ->
+    labelNames.each { labelName ->
+        nodes.each { node ->
             if (node.getAssignedLabels().find { it.getName() == labelName }) {
                 def agentName = node.getNodeName()
                 if (!isAnyJobRunningOnAgent(agentName)) {
@@ -138,3 +136,7 @@ def listAndCleanFolderOnAgentsInLabels(labelNames) {
         }
     }
 }
+
+def labelNames = ["label1", "label2"] // Replace with your label names
+listAndCleanFolderOnAgentsInLabels(labelNames)
+
