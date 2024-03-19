@@ -99,4 +99,42 @@ def cleanFolderOnAgentsInLabels(labelNames) {
 
 def labelNames = ["label1", "label2"] // Replace with your label names
 cleanFolderOnAgentsInLabels(labelNames)
+****************************************************************************************
 
+
+
+import hudson.FilePath
+
+def isAnyJobRunningOnAgent(agentName) {
+    def computer = Jenkins.instance.getComputer(agentName)
+    if (computer != null) {
+        for (executor in computer.executors) {
+            if (executor.isBusy()) {
+                return true
+            }
+        }
+    }
+    return false
+}
+
+def listAndCleanFolderOnAgentsInLabels(labelNames) {
+    def nodes = Jenkins.instance.getNodes()
+    nodes.each { node ->
+        labelNames.each { labelName ->
+            if (node.getAssignedLabels().find { it.getName() == labelName }) {
+                def agentName = node.getNodeName()
+                if (!isAnyJobRunningOnAgent(agentName)) {
+                    println "Listing contents of /data/gradle/caches on agent: $agentName"
+                    def workspacePath = new FilePath(Jenkins.instance.getComputer(agentName).channel, "/data/gradle/caches")
+                    workspacePath.list().each { file ->
+                        println file
+                    }
+                    println "Cleaning /data/gradle/caches folder on agent: $agentName"
+                    workspacePath.deleteContents()
+                } else {
+                    println "Skipping cleaning on agent $agentName as a job is running on it"
+                }
+            }
+        }
+    }
+}
