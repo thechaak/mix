@@ -47,3 +47,52 @@ def cleanFolderOnAgentsInLabel(labelName) {
 }
 
 cleanFolderOnAgentsInLabel(labelName)
+
+
+*******************************************************************************
+
+
+def isAnyJobRunningOnAgent(agentName) {
+    def computer = Jenkins.instance.getComputer(agentName)
+    if (computer != null) {
+        for (executor in computer.executors) {
+            if (executor.isBusy()) {
+                return true
+            }
+        }
+    }
+    return false
+}
+
+def getAgentsInLabel(labelName) {
+    def agentsInLabel = []
+    def nodes = Jenkins.instance.getNodes()
+    nodes.each { node ->
+        if (node.getAssignedLabels().find { it.getName() == labelName }) {
+            agentsInLabel.add(node.getNodeName())
+        }
+    }
+    return agentsInLabel
+}
+
+def getFreeAgentsInLabel(labelName) {
+    def freeAgentsInLabel = []
+    def agentsInLabel = getAgentsInLabel(labelName)
+    agentsInLabel.each { agentName ->
+        if (!isAnyJobRunningOnAgent(agentName)) {
+            freeAgentsInLabel.add(agentName)
+        }
+    }
+    return freeAgentsInLabel
+}
+
+def cleanFolderOnAgentsInLabel(labelName) {
+    def freeAgentsInLabel = getFreeAgentsInLabel(labelName)
+    println "Free agents in label $labelName for cleaning: $freeAgentsInLabel"
+    
+    freeAgentsInLabel.each { agentName ->
+        println "Cleaning folder on agent: $agentName"
+        // Add your folder removal logic here for the specified agent
+    }
+}
+
