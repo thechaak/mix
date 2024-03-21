@@ -139,4 +139,60 @@ def listAndCleanFolderOnAgentsInLabels(labelNames) {
 
 def labelNames = ["label1", "label2"] // Replace with your label names
 listAndCleanFolderOnAgentsInLabels(labelNames)
+*******************************************************************
+
+
+pipeline {
+    agent any
+    
+    stages {
+        stage('List and Clean Workspace on Agents') {
+            steps {
+                script {
+                    // Function to check if any job is running on an agent
+                    def isAnyJobRunningOnAgent(agentName) {
+                        def computer = Jenkins.instance.getComputer(agentName)
+                        if (computer != null) {
+                            for (executor in computer.executors) {
+                                if (executor.isBusy()) {
+                                    return true
+                                }
+                            }
+                        }
+                        return false
+                    }
+
+                    // Function to list and clean workspace on agents assigned to specific labels
+                    def listAndCleanFolderOnAgentsInLabels(labelNames) {
+                        def nodes = Jenkins.instance.getNodes()
+                        labelNames.each { labelName ->
+                            nodes.each { node ->
+                                if (node.getAssignedLabels().find { it.getName() == labelName }) {
+                                    def agentName = node.getNodeName()
+                                    if (!isAnyJobRunningOnAgent(agentName)) {
+                                        echo "Listing contents of /data/gradle/caches on agent: $agentName"
+                                        def workspacePath = new FilePath(Jenkins.instance.getComputer(agentName).channel, "/data/gradle/caches")
+                                        workspacePath.list().each { file ->
+                                            echo file
+                                        }
+                                        echo "Cleaning /data/gradle/caches folder on agent: $agentName"
+                                        workspacePath.deleteContents()
+                                    } else {
+                                        echo "Skipping cleaning on agent $agentName as a job is running on it"
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Specify the label names for which workspace needs to be cleaned
+                    def labelNames = ["label1", "label2"] // Replace with your label names
+                    
+                    // Call the function to list and clean workspace on agents assigned to the specified labels
+                    listAndCleanFolderOnAgentsInLabels(labelNames)
+                }
+            }
+        }
+    }
+}
 
