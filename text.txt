@@ -6,3 +6,27 @@ curl -X POST \
 
 curl -X GET \
   'https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize?client_id=<client_id>&response_type=code&redirect_uri=<callback_url>&scope=https://graph.microsoft.com/.default'
+
+
+*****************************
+
+
+JENKINS_URL="http://your-jenkins-server-url"
+
+# Jenkins username and password
+USERNAME="your-jenkins-username"
+PASSWORD="your-jenkins-password"
+
+# String to search for in console logs
+SEARCH_STRING="your-search-string"
+
+# Get list of all jobs from Jenkins
+JOBS=$(curl -s "${JENKINS_URL}/api/json?tree=jobs[name]" --user "${USERNAME}:${PASSWORD}" | jq -r '.jobs[].name')
+
+# Iterate through each job and search its console log for the string
+for JOB in $JOBS; do
+    CONSOLE_LOG=$(curl -s "${JENKINS_URL}/job/${JOB}/lastBuild/consoleText" --user "${USERNAME}:${PASSWORD}")
+    if echo "$CONSOLE_LOG" | grep -q "$SEARCH_STRING"; then
+        echo "String found in job: $JOB"
+    fi
+done
