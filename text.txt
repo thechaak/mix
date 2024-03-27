@@ -81,3 +81,45 @@ def listAndCleanFolderOnAgentsInLabels(labelNames) {
 
 def labelNames = ["oci_linux", "oci_linux_ol9"]
 listAndCleanFolderOnAgentsInLabels(labelNames)
+**************************************************************************************
+
+simplified and generic groovy script to list and clean a folder in jenkins agents
+
+import hudson.model.*
+import hudson.FilePath
+
+// Generic method to check if any job is running on an agent
+def isAnyJobRunningOnAgent(String agentName) {
+    def computer = Jenkins.instance.getComputer(agentName)
+    return computer?.executors.any { it.isBusy() } // More concise check
+}
+
+// Generic method to list and clean a folder on an agent within a label
+def listAndCleanFolderOnAgent(String agentName, String folderPath) {
+    if (!isAnyJobRunningOnAgent(agentName)) {
+        println "Listing contents of $folderPath on agent: $agentName"
+        def workspacePath = new FilePath(Jenkins.instance.getComputer(agentName).channel, folderPath)
+        workspacePath.list().each { file -> println file }
+
+        println "Cleaning $folderPath on agent: $agentName"
+        workspacePath.deleteContents()
+    } else {
+        println "Skipping cleaning on agent $agentName as a job is running on it"
+    }
+}
+
+// Main execution 
+def listAndCleanFolderOnAgentsInLabels(List<String> labelNames, String folderPath) {
+    Jenkins.instance.getNodes().each { node ->
+        if (node.getAssignedLabels().any { it.getName() in labelNames }) {
+            listAndCleanFolderOnAgent(node.getNodeName(), folderPath)
+        }
+    }
+}
+
+// Parameters for execution
+def labelNames = ["oci_linux", "oci_linux_ol9"]
+def folderPath = "/data/gradle/caches"
+
+// Execute the process
+listAndCleanFolderOnAgentsInLabels(labelNames, folderPath) 
