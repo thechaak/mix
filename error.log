@@ -1,0 +1,1 @@
+hudson.remoting.ProxyException: groovy.lang.MissingMethodException: No signature of method: java.util.ArrayList.listAndCleanFolderOnAgentsInLabels() is applicable for argument types: (java.util.ArrayList) values: [[oci_linux, oci_linux_ol9]]
