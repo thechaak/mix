@@ -136,3 +136,67 @@ try {
 } catch (Exception e) {
     println "Error accessing or using parameters: ${e.message}"
 } 
+
+
+******************************************************************************************************
+
+import hudson.model.Node
+import hudson.model.Computer
+import hudson.model.Label
+import hudson.FilePath
+import jenkins.model.Jenkins
+
+pipeline {
+    agent any
+    
+    stages {
+        stage("Clone"){
+            steps {
+                git branch: 'ENGFRONT-1328_oci-agent-cache-cleanup', credentialsId: '134157d7-594d-4e8b-a893-e336e621e5c8', url: 'ssh://git@bitbucket.sits.avaloq.net/coin/jenkins-maintenance.git'
+            }
+        }
+        
+        stage('Check Agent is Occupied then List and clean') {
+            steps {
+                script {
+                    def script = load 'groovy/agents-gradle-cache-cleanup.groovy'
+        
+                    def listAndCleanFolderOnAgentsInLabels = { labelNames ->
+                        def isAnyJobRunningOnAgent = { agentName ->
+                            def computer = Jenkins.instance.getComputer(agentName)
+                            if (computer != null) {
+                                for (executor in computer.executors) {
+                                    if (executor.isBusy()) {
+                                        return true
+                                    }
+                                }
+                            }
+                            return false
+                        }
+                        def nodes = Jenkins.instance.getNodes()
+                        labelNames.each { labelName ->
+                            nodes.each { node ->
+                                if (node.getAssignedLabels().find { it.getName() == labelName }) {
+                                    def agentName = node.getNodeName()
+                                    if (!isAnyJobRunningOnAgent(agentName)) {
+                                        echo "Listing contents of /data/gradle/caches on agent: $agentName"
+                                        def workspacePath = new FilePath(Jenkins.instance.getComputer(agentName).channel, "/data/gradle/caches")
+                                        workspacePath.list().each { file ->
+                                            echo file.getRemote() // Convert FilePath object to String
+                                        }
+                                        echo "Cleaning /data/gradle/caches folder on agent: $agentName"
+                                        workspacePath.deleteContents()
+                                    } else {
+                                        echo "Skipping cleaning on agent $agentName as a job is running on it"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    def labelNames = ["oci_linux", "oci_linux_ol9"]
+                    listAndCleanFolderOnAgentsInLabels(labelNames)
+                }
+            }
+        }
+    }
+}
