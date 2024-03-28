@@ -123,3 +123,16 @@ def folderPath = "/data/gradle/caches"
 
 // Execute the process
 listAndCleanFolderOnAgentsInLabels(labelNames, folderPath) 
+
+
+-------------------------
+try {
+    def params = params // Directly use the params object in Pipeline
+    println "labelNames: ${params.labelNames}"
+    println "folderPath: ${params.folderPath}" 
+
+    // Execute the process with parameters from Jenkins
+    listAndCleanFolderOnAgentsInLabels(params.labelNames, params.folderPath) 
+} catch (Exception e) {
+    println "Error accessing or using parameters: ${e.message}"
+} 
