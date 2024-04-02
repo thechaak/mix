@@ -215,3 +215,34 @@ pipeline {
 **************************************************************************************************************************
 
 https://us06web.zoom.us/j/4875485862?pwd=QitpclhtZDlsNjJVSVM2SmNST0FqZz09
+
+************************************************************************************
+
+
+
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'folderPath', defaultValue: '/data/gradle/caches', 
+               description: 'Folder path to be cleaned on the agents.')  
+
+        choice(name: 'labelNames', choices: ['oci_linux', 'oci_linux_ol9', /* Add more choices here */], 
+               description: 'Select the agent labels to clean.') 
+    }
+
+    stages {
+        stage('Clean Folders on Agents') {
+            steps {
+                script {
+                    // Load your Groovy functions - Assuming it's in a file named 'sharedFunctions.groovy'
+                    def sharedFunctions = load('sharedFunctions.groovy')
+
+                    // Call your function using the parameters
+                    sharedFunctions.listAndCleanFolderOnAgentsInLabels(params.labelNames, params.folderPath)
+                }
+            }
+        }
+    }
+}
+
