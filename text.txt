@@ -123,7 +123,16 @@ def folderPath = "/data/gradle/caches"
 
 // Execute the process
 listAndCleanFolderOnAgentsInLabels(labelNames, folderPath) 
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+        def nodeName = node.getNodeName()
+        def nodeClass = node.getClass().getName()
+        if (!nodeName.startsWith("hudson.slaves.DumbSlave") && 
+            !nodeClass.startsWith("hudson.slaves.DumbSlave")) {
+            if (node.getAssignedLabels().any { it.getName() in labelNames }) {
+                listAndCleanFolderOnAgent(nodeName, folderPath)
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 -------------------------
 try {
