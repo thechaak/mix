@@ -331,7 +331,6 @@ output "metric_alert_id" {
 }
 *************************************************************************
 
-
 pipeline {
     agent any
 
@@ -339,16 +338,17 @@ pipeline {
         string(name: 'folderPath', defaultValue: '/data/gradle/caches', 
                description: 'Folder path to be cleaned on the agents.')  
 
-        choice(name: 'labelNames', choices: ['oci_linux', 'oci_linux_ol9', /* Add more choices here */], 
+        choice(name: 'labelNames', choices: ['oci_linux', 'oci_linux_ol9'], 
                description: 'Select the agent labels to clean.') 
     }
 
     stages {
         stage('Checkout') {
-            steps{
-               git branch: 'ENGFRONT-1328_oci-agent-cache-cleanup', credentialsId: '134157d7-594d-4e8b-a893-e336e621e5c8', url: 'ssh://git@bitbucket.sits.avaloq.net/coin/jenkins-maintenance.git'
-                   }
-              }
+            steps {
+                git branch: 'ENGFRONT-1328_oci-agent-cache-cleanup', credentialsId: '134157d7-594d-4e8b-a893-e336e621e5c8', url: 'ssh://git@bitbucket.sits.avaloq.net/coin/jenkins-maintenance.git'
+            }
+        }
+
         stage('Clean Folders on Agents') {
             steps {
                 script {
@@ -359,3 +359,4 @@ pipeline {
         }
     }
 }
+
