@@ -1,0 +1,50 @@
+pipeline {
+    agent any
+    
+    parameters {
+        // Define string parameter for folder path
+        string(name: 'folderPath', defaultValue: '/data/gradle/caches', description: 'Folder path to be cleaned on the agents.')
+        
+        // Define choice parameter for label names
+        choice(name: 'labelNames', choices: ['oci_linux', 'oci_linux_ol9'], description: 'Select the agent labels to clean.')
+    }
+    
+    stages {
+        stage('Clean Folders on Agents') {
+            steps {
+                script {
+                    // Main execution 
+                    def listAndCleanFolderOnAgent = { String agentName, String folderPath ->
+                        if (!isAnyJobRunningOnAgent(agentName)) {
+                            println "Listing contents of $folderPath on agent: $agentName"
+                            def workspacePath = new FilePath(Jenkins.instance.getComputer(agentName).channel, folderPath)
+                            workspacePath.list().each { file -> println file }
+
+                            println "Cleaning $folderPath on agent: $agentName"
+                            workspacePath.deleteContents()
+                        } else {
+                            println "Skipping cleaning on agent $agentName as a job is running on it"
+                        }
+                    }
+                    
+                    def listAndCleanFolderOnAgentsInLabels = { List<String> labelNames, String folderPath ->
+                        Jenkins.instance.getNodes().each { node ->
+                            if (node.getAssignedLabels().any { it.getName() in labelNames }) {
+                                listAndCleanFolderOnAgent(node.getNodeName(), folderPath)
+                            }
+                        }
+                    }
+                    
+                    // Execute the process using parameters
+                    listAndCleanFolderOnAgentsInLabels(params.labelNames.split(','), params.folderPath)
+                }
+            }
+        }
+    }
+    
+    // Generic method to check if any job is running on an agent
+    def isAnyJobRunningOnAgent(String agentName) {
+        def computer = Jenkins.instance.getComputer(agentName)
+        return computer?.executors.any { it.isBusy() } // More concise check
+    }
+}
