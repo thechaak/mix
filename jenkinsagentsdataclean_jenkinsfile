@@ -77,12 +77,25 @@ pipeline {
                 script {
                     // Define the listAndCleanFolderOnAgent function (same as before)
                     def listAndCleanFolderOnAgent(String agentName, String folderPath) {
-                        // ... (implementation remains the same)
+                        if (!isAnyJobRunningOnAgent(agentName)) {
+                            println "Listing contents of $folderPath on agent: $agentName"
+                            def workspacePath = new FilePath(Jenkins.instance.getComputer(agentName).channel, folderPath)
+                            workspacePath.list().each { file -> println file }
+
+                            println "Cleaning $folderPath on agent: $agentName"
+                            workspacePath.deleteContents()
+                        } else {
+                            println "Skipping cleaning on agent $agentName as a job is running on it"
+                        }
                     }
 
                     // Define the listAndCleanFolderOnAgentsInLabels function (same as before)
                     def listAndCleanFolderOnAgentsInLabels(List<String> labelNames, String folderPath) {
-                        // ... (implementation remains the same)
+                        Jenkins.instance.getNodes().each { node ->
+                            if (node.getAssignedLabels().any { it.getName() in labelNames }) {
+                                listAndCleanFolderOnAgent(node.getNodeName(), folderPath)
+                            }
+                        }
                     }
 
                     // Execute the cleaning process
