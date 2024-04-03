@@ -278,3 +278,54 @@ resource "azurerm_container_registry" "acr" {
 }
 ---------------------------------------------
 
+
+variable "webhook_name" {
+  description = "Name of the webhook"
+  type        = string
+}
+
+variable "webhook_service_uri" {
+  description = "Service URI of the webhook"
+  type        = string
+}
+
+variable "webhook_actions" {
+  description = "Actions to trigger the webhook"
+  type        = list(string)
+}
+
+variable "metric_alert_name" {
+  description = "Name of the Azure Monitor Metric Alert"
+  type        = string
+}
+
+variable "metric_alert_description" {
+  description = "Description of the Azure Monitor Metric Alert"
+  type        = string
+}
+
+variable "metric_alert_scope" {
+  description = "Scope for the Azure Monitor Metric Alert"
+  type        = string
+}
+
+variable "metric_alert_condition" {
+  description = "Condition for the Azure Monitor Metric Alert"
+  type        = string
+}
+
+variable "metric_alert_action_group_id" {
+  description = "Action group ID for the Azure Monitor Metric Alert"
+  type        = string
+}
+
+***********
+output "webhook_id" {
+  description = "ID of the created webhook"
+  value       = azurerm_container_registry_webhook.webhook.id
+}
+
+output "metric_alert_id" {
+  description = "ID of the created Azure Monitor Metric Alert"
+  value       = azurerm_monitor_metric_alert.metric_alert.id
+}
