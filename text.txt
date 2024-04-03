@@ -246,3 +246,35 @@ pipeline {
     }
 }
 
+----------------------------------------
+
+
+resource "azurerm_container_registry_webhook" "webhook" {
+  name                = "my-webhook"
+  container_registry_id = azurerm_container_registry.acr.id
+  service_uri         = "https://example.com/webhook"
+  actions             = ["push"]
+}
+
+----------------------------------------
+
+resource "azurerm_monitor_metric_alert" "acr_alert" {
+  name                = "acr-alert"
+  resource_group_name = var.resource_group_name
+  scopes              = [azurerm_container_registry.acr.id]
+
+  # Define alert condition, action group, etc.
+}
+
+----------------------------------------------
+
+resource "azurerm_container_registry" "acr" {
+  name               = var.acr_name
+  # Other properties...
+
+  content_trust_policy {
+    enabled = true
+  }
+}
+---------------------------------------------
+
