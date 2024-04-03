@@ -48,3 +48,48 @@ pipeline {
         return computer?.executors.any { it.isBusy() } // More concise check
     }
 }
+
+**************************************************
+
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'folderPath', defaultValue: '/data/gradle/caches', description: 'Folder path to be cleaned on the agents.')
+        choice(name: 'labelNames', choices: ['oci_linux', 'oci_linux_ol9'], description: 'Select the agent labels to clean.')
+    }
+
+    stages {
+        stage('Check Agents') {
+            steps {
+                script {
+                    // Define the isAnyJobRunningOnAgent function (same as before)
+                    def isAnyJobRunningOnAgent(String agentName) {
+                        def computer = Jenkins.instance.getComputer(agentName)
+                        return computer?.executors.any { it.isBusy() } 
+                    }
+                }
+            }
+        }
+
+        stage('List and Clean Folders') {
+            steps {
+                script {
+                    // Define the listAndCleanFolderOnAgent function (same as before)
+                    def listAndCleanFolderOnAgent(String agentName, String folderPath) {
+                        // ... (implementation remains the same)
+                    }
+
+                    // Define the listAndCleanFolderOnAgentsInLabels function (same as before)
+                    def listAndCleanFolderOnAgentsInLabels(List<String> labelNames, String folderPath) {
+                        // ... (implementation remains the same)
+                    }
+
+                    // Execute the cleaning process
+                    listAndCleanFolderOnAgentsInLabels(params.labelNames.split(','), params.folderPath) 
+                }
+            }
+        }
+    }
+}
+
