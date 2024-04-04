@@ -1,4 +1,71 @@
 pipeline {
+  agent any
+
+  parameters {
+    string(name: 'labelNamesString', defaultValue: 'oci_linux, oci_linux_ol9', description: 'Comma-separated list of agent labels')
+    string(name: 'folderPath', defaultValue: '/data/gradle/caches', description: 'Path to the folder to clean') 
+  }
+
+  stages {
+    stage('List and Clean Folders') {
+      steps {
+        script {
+          // Since the Groovy code is substantial, we'll use a multi-line string for clarity
+          def groovyScript = """
+            import hudson.model.*
+            import hudson.FilePath
+
+            // Generic method to check if any job is running on an agent
+            def isAnyJobRunningOnAgent(String agentName) {
+              def computer = Jenkins.instance.getComputer(agentName)
+              return computer?.executors.any { it.isBusy() } 
+            }
+
+            // Generic method to list and clean a folder on an agent within a label
+            def listAndCleanFolderOnAgent(String agentName, String folderPath) {
+              if (!isAnyJobRunningOnAgent(agentName)) {
+                println "Listing contents of \$folderPath on agent: \$agentName"
+                def workspacePath = new FilePath(Jenkins.instance.getComputer(agentName).channel, folderPath)
+                workspacePath.list().each { file -> println file }
+
+                println "Cleaning \$folderPath on agent: \$agentName"
+                workspacePath.deleteContents()
+              } else {
+                println "Skipping cleaning on agent \$agentName as a job is running on it"
+              }
+            }
+
+            // Main execution 
+            def listAndCleanFolderOnAgentsInLabels(List<String> labelNames, String folderPath) {
+              Jenkins.instance.getNodes().each { node ->
+                if (node.getAssignedLabels().any { it.getName() in labelNames }) {
+                  listAndCleanFolderOnAgent(node.getNodeName(), folderPath)
+                }
+              }
+            }
+
+            // Convert comma-separated string parameter into a list
+            def labelNames = params.labelNamesString.split(',')
+            def folderPath = params.folderPath
+
+            // Execute the process
+            listAndCleanFolderOnAgentsInLabels(labelNames, folderPath) 
+          """
+
+          // Execute the embedded Groovy script
+          load groovyScript
+        }
+      }
+    }
+  }
+}
+
+
+
+OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+
+
+pipeline {
     agent any
     
     parameters {
