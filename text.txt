@@ -513,3 +513,80 @@ output "website_endpoint" {
   description = "The primary endpoint URL for the static website."
   value       = azurerm_storage_account.example.primary_web_endpoint
 }
+
+
+AKs nodepool:
+
+variables.tf
+variable "resource_group_name" {
+  description = "The name of the resource group in which to create the AKS cluster."
+  type        = string
+}
+
+variable "cluster_name" {
+  description = "The name of the AKS cluster."
+  type        = string
+}
+
+variable "node_pool_name" {
+  description = "The name of the node pool."
+  type        = string
+}
+
+variable "node_count" {
+  description = "The initial number of nodes in the node pool."
+  type        = number
+}
+
+variable "node_vm_size" {
+  description = "The size of the Virtual Machine to be used as nodes in the pool."
+  type        = string
+}
+
+variable "kubernetes_version" {
+  description = "The version of Kubernetes to use for the node pool."
+  type        = string
+}
+
+variable "os_disk_size_gb" {
+  description = "The disk size (in GB) of the OS disk for each node in the pool."
+  type        = number
+}
+
+main.tf
+provider "azurerm" {
+  features {}
+}
+
+resource "azurerm_kubernetes_cluster" "example" {
+  name                = var.cluster_name
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  dns_prefix          = "example-aks"
+  kubernetes_version  = var.kubernetes_version
+
+  default_node_pool {
+    name            = var.node_pool_name
+    node_count      = var.node_count
+    vm_size         = var.node_vm_size
+    os_disk_size_gb = var.os_disk_size_gb
+  }
+}
+
+
+outputs.tf
+
+output "node_pool_name" {
+  description = "The name of the node pool."
+  value       = azurerm_kubernetes_cluster.example.default_node_pool[0].name
+}
+
+output "node_count" {
+  description = "The current number of nodes in the node pool."
+  value       = azurerm_kubernetes_cluster.example.default_node_pool[0].node_count
+}
+
+output "node_vm_size" {
+  description = "The size of the Virtual Machine used as nodes in the pool."
+  value       = azurerm_kubernetes_cluster.example.default_node_pool[0].vm_size
+}
