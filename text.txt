@@ -361,3 +361,71 @@ pipeline {
 }
 
 hudson.remoting.ProxyException: groovy.lang.MissingMethodException: No signature of method: java.util.ArrayList.listAndCleanFolderOnAgentsInLabels() is applicable for argument types: (java.lang.String, java.lang.String) values: [oci_linux_ol9, /data/gradle/caches]
+
+
+*********************************
+
+terrafrom modules:
+
+Variables.tf
+
+variable "resource_group_name" {
+  description = "The name of the resource group in which to create the storage account."
+  type        = string
+}
+
+variable "location" {
+  description = "The location/region where the storage account will be created."
+  type        = string
+}
+
+variable "storage_account_name" {
+  description = "The name of the storage account."
+  type        = string
+  default     = "mystorageaccount"
+}
+
+variable "account_tier" {
+  description = "The storage account tier."
+  type        = string
+  default     = "Standard"
+}
+
+variable "account_replication_type" {
+  description = "The type of replication to use for this storage account."
+  type        = string
+  default     = "LRS"
+}
+
+
+main.tf
+
+provider "azurerm" {
+  features {}
+}
+
+resource "azurerm_resource_group" "example" {
+  name     = var.resource_group_name
+  location = var.location
+}
+
+resource "azurerm_storage_account" "example" {
+  name                     = var.storage_account_name
+  resource_group_name      = azurerm_resource_group.example.name
+  location                 = azurerm_resource_group.example.location
+  account_tier             = var.account_tier
+  account_replication_type = var.account_replication_type
+}
+
+
+Outputs.tf
+
+output "storage_account_id" {
+  description = "The ID of the created storage account."
+  value       = azurerm_storage_account.example.id
+}
+
+output "primary_blob_endpoint" {
+  description = "The primary endpoint URL for Blob storage in the storage account."
+  value       = azurerm_storage_account.example.primary_blob_endpoint
+}
