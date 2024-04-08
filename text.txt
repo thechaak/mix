@@ -590,3 +590,54 @@ output "node_vm_size" {
   description = "The size of the Virtual Machine used as nodes in the pool."
   value       = azurerm_kubernetes_cluster.example.default_node_pool[0].vm_size
 }
+
+
+*******************************88
+
+
+pipeline {
+    agent {
+        // Select an appropriate agent (consider using a label that matches your agents)
+        label 'oci_linux || oci_linux_ol9' 
+    }
+
+    stages {
+        stage('Clear Agent Folders') {
+            steps {
+                script {
+                    def isAnyJobRunningOnAgent(String agentName) {
+                        def computer = Jenkins.instance.getComputer(agentName)
+                        return computer?.executors.any { it.isBusy() } 
+                    }
+
+                    def listAndCleanFolderOnAgent(String agentName, String folderPath) {
+                        if (!isAnyJobRunningOnAgent(agentName)) {
+                            println "Listing contents of $folderPath on agent: $agentName"
+                            def workspacePath = new FilePath(Jenkins.instance.getComputer(agentName).channel, folderPath)
+                            workspacePath.list().each { file -> println file }
+
+                            println "Cleaning $folderPath on agent: $agentName"
+                            workspacePath.deleteContents()
+                        } else {
+                            println "Skipping cleaning on agent $agentName as a job is running on it"
+                        }
+                    }
+
+                    def listAndCleanFolderOnAgentsInLabels(List<String> labelNames, String folderPath) {
+                        Jenkins.instance.getNodes().each { node ->
+                            if (node.getAssignedLabels().any { it.getName() in labelNames }) {
+                                listAndCleanFolderOnAgent(node.getNodeName(), folderPath)
+                            }
+                        }
+                    }
+
+                    def labelNames = ["oci_linux", "oci_linux_ol9"]
+                    def folderPath = "/data/gradle/caches"
+
+                    listAndCleanFolderOnAgentsInLabels(labelNames, folderPath) 
+                }
+            }
+        }
+    }
+}
+
