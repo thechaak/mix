@@ -641,3 +641,25 @@ pipeline {
     }
 }
 
+xxxxxxxxxxxxxxxxxx
+
+
+    stages {
+        stage('Print Workspace') {
+            steps {
+                echo "Workspace directory: ${pwd()}"
+            }
+        }
+        stage('Clean Agents Folder') {
+            steps {
+                script {
+                    // Import the Groovy script using absolute path
+                    def scriptContent = readFile "${pwd()}/path/to/your/script.groovy"
+                    
+                    // Evaluate the Groovy script
+                    evaluate(scriptContent)
+                }
+            }
+        }
+
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
