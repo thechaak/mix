@@ -663,3 +663,16 @@ xxxxxxxxxxxxxxxxxx
         }
 
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+
+script {
+                    def scriptPath = "${workspace}/groovy/cleanup.groovy"
+                    def scriptContent = readFile(scriptPath)
+                    
+                    // Pass parameters as part of the script content
+                    scriptContent += "\nlistAndCleanFolderOnAgentsInLabels('${params.labelNames}', '${params.folderPath}')"
+
+                    evaluate(scriptContent)
+                }
+
+_________________________________________________________________________________________________________________________________________________
