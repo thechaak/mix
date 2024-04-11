@@ -676,3 +676,132 @@ script {
                 }
 
 _________________________________________________________________________________________________________________________________________________
+
+
+
+
+Story
+
+    Title: Create Modular Azure Container Registry Terraform Building Blocks
+
+Feature-Level Tickets
+
+Ticket: ACR Creation and Configuration
+        Description: Terraform module to create an ACR with desired SKU, network access settings (private or public), admin-enabled status, etc.
+        Acceptance Criteria: Module successfully creates and configures ACRs according to provided parameters.
+
+Ticket: ACR Authentication Integration
+        Description: Mechanism for authenticating with ACR – Service Principal, Managed Identity, etc.
+        Acceptance Criteria: Authentication works with build pipelines or other tools needing access.
+
+main.tf:
+variable "acr_name" {
+  description = "Name of the Azure Container Registry"
+}
+
+# Choose ONE authentication method below. Comment out the unused one 
+
+# **OPTION 1: Service Principal Authentication** 
+variable "service_principal_id" {}
+variable "service_principal_secret" {}
+
+resource "azurerm_role_assignment" "acr_pull" {
+  scope                = azurerm_container_registry.acr.id
+  role_definition_name = "AcrPull"
+  principal_id         = var.service_principal_id
+}
+
+# **OPTION 2: Managed Identity Authentication**
+resource "azurerm_user_assigned_identity" "acr_identity" {
+  resource_group_name = azurerm_resource_group.rg.name 
+  location            = azurerm_resource_group.rg.location
+  name                = "acr-managed-identity" 
+}
+
+resource "azurerm_role_assignment" "acr_pull_managed" {
+  scope                = azurerm_container_registry.acr.id
+  role_definition_name = "AcrPull"
+  principal_id         = azurerm_user_assigned_identity.acr_identity.principal_id 
+}
+
+variable.tf
+
+variable "acr_name" {} 
+
+# Option 1: Service Principal variables
+variable "service_principal_id" {
+  sensitive = true
+}
+variable "service_principal_secret" {
+  sensitive = true
+}
+
+outputs.tf
+
+output "acr_id" {
+  value = azurerm_container_registry.acr.id
+}
+
+# Depending on your chosen authentication method 
+output "client_id" {
+  value = # Service Principal ID OR Managed Identity ID
+}
+
+output "client_secret" {
+  value = # Service Principal secret (if applicable)
+  sensitive = true
+}
+
+********************
+Ticket: ACR Image Tagging and Management
+        Description: Enforce tagging conventions; potentially include cleanup of old image tags.
+        Acceptance Criteria: Policy implementation verifiable in the ACR interface.
+
+main.tf
+# Tagging policy enforcement
+resource "azurerm_container_registry_repository_policy" "tagging_policy" {
+  resource_id = azurerm_container_registry.acr.id
+
+  enabled = true
+
+  rules {
+    tag_status {
+      status      = "enabled" 
+      repository_regex = ".*"  # Apply to all repositories 
+      tag_regex    = "^(latest|[0-9]+\.[0-9]+\.[0-9]+(-[a-z0-9]+)?)$"  # Example regex 
+    }
+  }
+}
+
+# Optional: Image cleanup policy
+resource "azurerm_container_registry_repository_policy" "cleanup_policy" {
+  resource_id = azurerm_container_registry.acr.id
+
+  enabled = true  # Or set to 'false' to disable 
+
+  rules {
+    untagged_manifest_expiration {
+      days = 7  # Keep untagged images for 7 days 
+    }
+  }
+}
+
+variables.tf
+
+variable "acr_name" {}
+
+# Variables for customizing the tagging regex 
+variable "tagging_regex" {
+  default = "^(latest|[0-9]+\.[0-9]+\.[0-9]+(-[a-z0-9]+)?)$"
+}
+
+# Variables for customizing the cleanup policy
+variable "cleanup_enabled" {
+  default = false
+}
+
+variable "cleanup_days" {
+  default = 7
+}
+
+
