@@ -804,4 +804,48 @@ variable "cleanup_days" {
   default = 7
 }
 
+*******************************************************
+g#!/usr/bin/env groovy
+import hudson.model.Node
+import hudson.model.Computer
+import hudson.model.Label
+import hudson.FilePath
+import jenkins.model.Jenkins
+
+// Method to check if any job is running on an agent
+def isAnyJobRunningOnAgent(String agentName) {
+    def computer = Jenkins.instance.getComputer(agentName)
+    return computer?.executors.any { it.isBusy() } 
+}
+
+// Method to list and clean a folder on an agent within a label
+def listAndCleanFolderOnAgent(String agentName, String folderPath) {
+    if (!isAnyJobRunningOnAgent(agentName)) {
+        println "Listing contents of $folderPath on agent: $agentName"
+        def folderToClean = new FilePath(Jenkins.instance.getComputer(agentName).channel, folderPath)
+        folderToClean.list().each { file -> println file }
+
+        println "Cleaning $folderPath on agent: $agentName"
+        folderToClean.deleteContents()
+    } else {
+        println "Skipping cleaning on agent $agentName as a job is running on it"
+    }
+}
+
+// Main execution 
+def listAndCleanFolderOnAgentsInLabels(String labelNames, String folderPath) {
+  	List<String> labels = labelNames.split(',')
+    Jenkins.instance.getNodes().each { node ->
+        if (node.getAssignedLabels().any { it.getName() in labelNames }) {
+            listAndCleanFolderOnAgent(node.getNodeName(), folderPath)
+        }
+    }
+    return true
+}
+
+// Execute the process
+listAndCleanFolderOnAgentsInLabels(labelNames, folderPath) 
+return this
+
+*********************
 
