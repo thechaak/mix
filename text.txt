@@ -835,56 +835,43 @@ return this
 }
 
 ----------------------------------------
-#!/usr/bin/env groovy
-import hudson.model.Node
-import hudson.model.Computer
-import hudson.model.Label
-import hudson.FilePath
-import jenkins.model.Jenkins
-
-// Method to check if any job is running on an agent
-def isAnyJobRunningOnAgent(String agentName) {
-   def computer = Jenkins.instance.getComputer(agentName)
-   return computer?.executors.any { it.isBusy() } 
-}
-
-// Method to list and clean a folder on an agent within a label
 def listAndCleanFolderOnAgent(String agentName, String folderPath) {
-   if (!isAnyJobRunningOnAgent(agentName)) {
-      println "Listing contents of $folderPath on agent: $agentName"
-      def folderToClean = new FilePath(Jenkins.instance.getComputer(agentName).channel, folderPath)
-      def files = folderToClean.list()
-      if (!files.isEmpty()) { // Check if files exist in the folder
-         println "Cleaning $folderPath on agent: $agentName"
-         folderToClean.deleteContents()
-         return files.size() // Return the number of files cleaned
-      } else {
-         println "No files found in $folderPath on agent: $agentName"
-         return 0 // Return 0 if no files are found and cleaned
-      }
-   } else {
-      println "Skipping cleaning on agent $agentName as a job is running on it"
-      return 0 // Return 0 if cleaning is skipped
-   }
+  if (!isAnyJobRunningOnAgent(agentName)) {
+    println "Listing contents of $folderPath on agent: $agentName"
+    def folderToClean = new FilePath(Jenkins.instance.getComputer(agentName).channel, folderPath)
+
+    // Check if the folder exists and has contents
+    if (folderToClean.exists() && folderToClean.list().size() > 0) { 
+      folderToClean.list().each { file -> println file }
+
+      println "Cleaning $folderPath on agent: $agentName"
+      def deleteResult = folderToClean.deleteContents()
+      return deleteResult // Return result of deletion
+    } else {
+      println "$folderPath on agent $agentName is empty or doesn't exist. Skipping cleaning."
+      return false  // Indicate no cleaning        
+    }
+  } else {
+    println "Skipping cleaning on agent $agentName as a job is running on it"
+    return null // Indicate agent was busy
+  }
 }
 
 // Main execution 
 def listAndCleanFolderOnAgentsInLabels(String labelNames, String folderPath) {
-   List<String> labels = labelNames.split(',')
-   int totalCleanedCaches = 0 // Counter for total cleaned caches
-   int agentsProcessed = 0 // Counter for processed agents
+  List<String> labels = labelNames.split(',')
+  int cleanedCaches = 0 // Counter for cleaned caches
+  int agentsProcessed = 0 // Counter for processed agents
 
-   Jenkins.instance.getNodes().each { node ->
-      if (node.getAssignedLabels().any { it.getName() in labelNames }) {
-         agentsProcessed++
-         totalCleanedCaches += listAndCleanFolderOnAgent(node.getNodeName(), folderPath)
-      }
-   }
-   println("Cleaned ${totalCleanedCaches} gradle caches from ${agentsProcessed} agents") // Metrics
-   return true
+  Jenkins.instance.getNodes().each { node ->
+    if (node.getAssignedLabels().any { it.getName() in labelNames }) {
+      agentsProcessed++
+      def cleaningResult = listAndCleanFolderOnAgent(node.getNodeName(), folderPath)
+      if (cleaningResult == true) { // Only increment if deletion was successful
+        cleanedCaches++ 
+      } 
+    }
+  }
+  println("Cleaned ${cleanedCaches} gradle caches from ${agentsProcessed} agents") // Metrics
+  return true
 }
-
-// Execute the process
-listAndCleanFolderOnAgentsInLabels(labelNames, folderPath) 
-return this
-
