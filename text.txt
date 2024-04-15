@@ -837,14 +837,15 @@ return this
 ----------------------------------------
 def listAndCleanFolderOnAgent(String agentName, String folderPath) {
   if (!isAnyJobRunningOnAgent(agentName)) {
-    println "Checking $folderPath on agent: $agentName" // Simplified logging
+    println "Checking $folderPath on agent: $agentName" 
     def folderToClean = new FilePath(Jenkins.instance.getComputer(agentName).channel, folderPath)
 
     // Check if the folder exists and has contents
-    if (folderToClean.exists()) { 
+    if (folderToClean.exists() && folderToClean.list().size() > 0) { 
       println "Cleaning $folderPath on agent: $agentName"
+      folderToClean.list().each { file -> println file } // Optional: Log files being deleted
       folderToClean.deleteContents()
-      return true // Indicate successful cleaning
+      return true // Indicate successful cleaning and content presence
     } else {
       println "$folderPath on agent $agentName is empty or doesn't exist. Skipping cleaning."
       return false  // Indicate no cleaning        
