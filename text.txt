@@ -594,87 +594,56 @@ output "node_vm_size" {
 
 *******************************88
 
+#!/usr/bin/env groovy
+import hudson.model.Node
+import hudson.model.Computer
+import hudson.model.Label
+import hudson.FilePath
+import jenkins.model.Jenkins
 
-pipeline {
-    agent {
-        // Select an appropriate agent (consider using a label that matches your agents)
-        label 'oci_linux || oci_linux_ol9' 
-    }
-
-    stages {
-        stage('Clear Agent Folders') {
-            steps {
-                script {
-                    def isAnyJobRunningOnAgent(String agentName) {
-                        def computer = Jenkins.instance.getComputer(agentName)
-                        return computer?.executors.any { it.isBusy() } 
-                    }
-
-                    def listAndCleanFolderOnAgent(String agentName, String folderPath) {
-                        if (!isAnyJobRunningOnAgent(agentName)) {
-                            println "Listing contents of $folderPath on agent: $agentName"
-                            def workspacePath = new FilePath(Jenkins.instance.getComputer(agentName).channel, folderPath)
-                            workspacePath.list().each { file -> println file }
-
-                            println "Cleaning $folderPath on agent: $agentName"
-                            workspacePath.deleteContents()
-                        } else {
-                            println "Skipping cleaning on agent $agentName as a job is running on it"
-                        }
-                    }
-
-                    def listAndCleanFolderOnAgentsInLabels(List<String> labelNames, String folderPath) {
-                        Jenkins.instance.getNodes().each { node ->
-                            if (node.getAssignedLabels().any { it.getName() in labelNames }) {
-                                listAndCleanFolderOnAgent(node.getNodeName(), folderPath)
-                            }
-                        }
-                    }
-
-                    def labelNames = ["oci_linux", "oci_linux_ol9"]
-                    def folderPath = "/data/gradle/caches"
-
-                    listAndCleanFolderOnAgentsInLabels(labelNames, folderPath) 
-                }
-            }
-        }
-    }
+// Method to check if any job is running on an agent
+def isAnyJobRunningOnAgent(String agentName) {
+   def computer = Jenkins.instance.getComputer(agentName)
+   return computer?.executors.any { it.isBusy() } 
 }
 
-xxxxxxxxxxxxxxxxxx
+// Method to list and clean a folder on an agent within a label
+def listAndCleanFolderOnAgent(String agentName, String folderPath) {
+   if (!isAnyJobRunningOnAgent(agentName)) {
+      println "Listing contents of $folderPath on agent: $agentName"
+      def folderToClean = new FilePath(Jenkins.instance.getComputer(agentName).channel, folderPath)
+      folderToClean.list().each { file -> println file }
 
+      println "Cleaning $folderPath on agent: $agentName"
+      folderToClean.deleteContents()
+      return true // Return true to indicate successful cleaning
+   } else {
+      println "Skipping cleaning on agent $agentName as a job is running on it"
+      return false // Return false to indicate skipped cleaning 
+   }
+}
 
-    stages {
-        stage('Print Workspace') {
-            steps {
-                echo "Workspace directory: ${pwd()}"
-            }
-        }
-        stage('Clean Agents Folder') {
-            steps {
-                script {
-                    // Import the Groovy script using absolute path
-                    def scriptContent = readFile "${pwd()}/path/to/your/script.groovy"
-                    
-                    // Evaluate the Groovy script
-                    evaluate(scriptContent)
-                }
-            }
-        }
+// Main execution 
+def listAndCleanFolderOnAgentsInLabels(String labelNames, String folderPath) {
+   List<String> labels = labelNames.split(',')
+   int cleanedCaches = 0 // Counter for cleaned caches
+   int agentsProcessed = 0 // Counter for processed agents
 
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   Jenkins.instance.getNodes().each { node ->
+      if (node.getAssignedLabels().any { it.getName() in labelNames }) {
+         agentsProcessed++
+         if (listAndCleanFolderOnAgent(node.getNodeName(), folderPath)) {
+            cleanedCaches++ 
+         }
+      }
+   }
+   println("Cleaned ${cleanedCaches} gradle caches from ${agentsProcessed} agents") // Metrics
+   return true
+}
 
-
-script {
-                    def scriptPath = "${workspace}/groovy/cleanup.groovy"
-                    def scriptContent = readFile(scriptPath)
-                    
-                    // Pass parameters as part of the script content
-                    scriptContent += "\nlistAndCleanFolderOnAgentsInLabels('${params.labelNames}', '${params.folderPath}')"
-
-                    evaluate(scriptContent)
-                }
-
+// Execute the process
+listAndCleanFolderOnAgentsInLabels(labelNames, folderPath) 
+return this
 _________________________________________________________________________________________________________________________________________________
 
 
