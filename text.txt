@@ -593,13 +593,16 @@ output "node_vm_size" {
 
 
 *******************************88
-
 #!/usr/bin/env groovy
 import hudson.model.Node
 import hudson.model.Computer
 import hudson.model.Label
 import hudson.FilePath
 import jenkins.model.Jenkins
+
+// Metrics initialization
+def totalCleanedCaches = 0
+def totalAgentsProcessed = 0
 
 // Method to check if any job is running on an agent
 def isAnyJobRunningOnAgent(String agentName) {
@@ -610,40 +613,38 @@ def isAnyJobRunningOnAgent(String agentName) {
 // Method to list and clean a folder on an agent within a label
 def listAndCleanFolderOnAgent(String agentName, String folderPath) {
    if (!isAnyJobRunningOnAgent(agentName)) {
-      println "Listing contents of $folderPath on agent: $agentName"
-      def folderToClean = new FilePath(Jenkins.instance.getComputer(agentName).channel, folderPath)
-      folderToClean.list().each { file -> println file }
-
-      println "Cleaning $folderPath on agent: $agentName"
-      folderToClean.deleteContents()
-      return true // Return true to indicate successful cleaning
+       println "Listing contents of $folderPath on agent: $agentName"
+       def folderToClean = new FilePath(Jenkins.instance.getComputer(agentName).channel, folderPath)
+       def files = folderToClean.list()
+       if (!files.isEmpty()) {
+           println "Cleaning $folderPath on agent: $agentName"
+           folderToClean.deleteContents()
+           totalCleanedCaches += files.size()
+       } else {
+           println "No files found in $folderPath on agent: $agentName"
+       }
+       totalAgentsProcessed++
    } else {
-      println "Skipping cleaning on agent $agentName as a job is running on it"
-      return false // Return false to indicate skipped cleaning 
+       println "Skipping cleaning on agent $agentName as a job is running on it"
    }
 }
 
 // Main execution 
 def listAndCleanFolderOnAgentsInLabels(String labelNames, String folderPath) {
-   List<String> labels = labelNames.split(',')
-   int cleanedCaches = 0 // Counter for cleaned caches
-   int agentsProcessed = 0 // Counter for processed agents
-
+    List<String> labels = labelNames.split(',')
    Jenkins.instance.getNodes().each { node ->
-      if (node.getAssignedLabels().any { it.getName() in labelNames }) {
-         agentsProcessed++
-         if (listAndCleanFolderOnAgent(node.getNodeName(), folderPath)) {
-            cleanedCaches++ 
-         }
-      }
+       if (node.getAssignedLabels().any { it.getName() in labelNames }) {
+           listAndCleanFolderOnAgent(node.getNodeName(), folderPath)
+       }
    }
-   println("Cleaned ${cleanedCaches} gradle caches from ${agentsProcessed} agents") // Metrics
-   return true
+   println "Cleaned $totalCleanedCaches Gradle caches from $totalAgentsProcessed agents."
+   return this
 }
 
 // Execute the process
 listAndCleanFolderOnAgentsInLabels(labelNames, folderPath) 
 return this
+
 _________________________________________________________________________________________________________________________________________________
 
 
