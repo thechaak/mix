@@ -818,4 +818,20 @@ listAndCleanFolderOnAgentsInLabels(labelNames, folderPath)
 return this
 
 *********************
+   List<String> labels = labelNames.split(',')
+   int cleanedCaches = 0 // Counter for cleaned caches
+   int agentsProcessed = 0 // Counter for processed agents
 
+   Jenkins.instance.getNodes().each { node ->
+      if (node.getAssignedLabels().any { it.getName() in labelNames }) {
+         agentsProcessed++
+         if (listAndCleanFolderOnAgent(node.getNodeName(), folderPath)) {
+            cleanedCaches++ 
+         }
+      }
+   }
+   println("Cleaned ${cleanedCaches} gradle caches from ${agentsProcessed} agents")
+   return true
+}
+
+----------------------------------------
