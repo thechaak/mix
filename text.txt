@@ -875,3 +875,73 @@ def listAndCleanFolderOnAgentsInLabels(String labelNames, String folderPath) {
   println("Cleaned ${cleanedCaches} gradle caches from ${agentsProcessed} agents")  
   return true
 }
+
+*********************************************************************************************************************
+
+
+main.tf
+
+# Managed Identity Authentication
+resource "azurerm_user_assigned_identity" "acr_identity" {
+  resource_group_name = azurerm_resource_group.rg.name 
+  location            = azurerm_resource_group.rg.location
+  name                = "acr-managed-identity" 
+
+  # Activate only if authentication_method is 'managed_identity'
+  count = var.authentication_method == "managed_identity" ? 1 : 0
+}
+
+# Role Assignment (dynamic selection)
+resource "azurerm_role_assignment" "acr_pull" {
+  scope                = azurerm_container_registry.acr.id
+  role_definition_name = "AcrPull"
+
+  # Conditional based on authentication_method
+  principal_id = var.authentication_method == "service_principal" ? 
+                     var.service_principal_id : 
+                     azurerm_user_assigned_identity.acr_identity.principal_id 
+
+  # Activate only if authentication_method is 'managed_identity'
+  count = var.authentication_method == "managed_identity" ? 1 : 0
+}
+
+
+variables.tf
+
+variable "acr_name" {
+  description = "Name of the Azure Container Registry"
+}
+
+variable "authentication_method" {
+  type        = string
+  default     = "service_principal"  
+  description = "Choose authentication method: 'service_principal' or 'managed_identity'"
+}
+
+variable "service_principal_id" {
+  sensitive = true
+}
+variable "service_principal_secret" {
+  sensitive = true
+}
+
+
+outputs.tf
+
+output "acr_login_server" {
+  value = azurerm_container_registry.acr.login_server
+}
+output "acr_id" {
+  value = azurerm_container_registry.acr.id
+}
+
+# Depending on your chosen authentication method 
+output "client_id" {
+  value = # Service Principal ID OR Managed Identity ID
+}
+
+output "client_secret" {
+  value = # Service Principal secret (if applicable)
+  sensitive = true
+}
+
