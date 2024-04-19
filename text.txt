@@ -878,7 +878,7 @@ def listAndCleanFolderOnAgentsInLabels(String labelNames, String folderPath) {
 
 *********************************************************************************************************************
 
-
+ACR_AUTH
 main.tf
 
 # Managed Identity Authentication
@@ -945,3 +945,49 @@ output "client_secret" {
   sensitive = true
 }
 
+***************************************************************************************************************************
+
+aks
+
+module "aks" {
+  source              = "terraform-azurerm-aks"
+  resource_group_name = var.resource_group_name
+  cluster_name        = var.cluster_name
+  location            = var.location
+  node_count          = var.node_count
+  node_vm_size        = var.node_vm_size
+}
+
+
+variables.tf:
+
+variable "resource_group_name" {
+  description = "Name of the Azure resource group"
+}
+
+variable "cluster_name" {
+  description = "Name of the AKS cluster"
+}
+
+variable "location" {
+  description = "Azure region where resources will be deployed"
+}
+
+variable "node_count" {
+  description = "Number of nodes in the AKS cluster"
+  default     = 3
+}
+
+variable "node_vm_size" {
+  description = "Size of the VMs in the AKS cluster nodes"
+  default     = "Standard_DS2_v2"
+}
+
+outputs.tf:
+
+output "kube_config" {
+  description = "Kubernetes configuration for accessing the AKS cluster"
+  value       = module.aks.kube_config
+}
+
+*** This can be implemented further ***
