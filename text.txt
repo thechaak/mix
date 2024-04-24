@@ -991,3 +991,30 @@ output "kube_config" {
 }
 
 *** This can be implemented further ***
+
+***************************************************************
+
+address_space = ["10.229.192.0/20"]
+
+subnet_prefixes = ["10.229.192.0/24", "10.229.198.0/24"]
+
+route_table = {
+  "security-group" = {
+    disableBgpRoutePropagation = false
+    routes = [
+      {
+        name             = "default-udr"
+        addressPrefix    = "0.0.0.0/0"
+        nextHopType      = "VirtualAppliance"
+        nextHopIpAddress = "10.231.10.100"
+      },
+      {
+        name             = "network-146.189.0.0-16-udr"
+        addressPrefix    = "146.189.0.0/16"
+        nextHopType      = "VirtualAppliance"
+        nextHopIpAddress = "10.231.10.200"
+      }
+    ]
+  }
+}
+
