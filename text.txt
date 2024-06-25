@@ -1018,3 +1018,16 @@ route_table = {
   }
 }
 
+
+zoom new link:
+
+
+Join Zoom Meeting
+https://us05web.zoom.us/j/89508828375?pwd=Sk6hWfwbSzueJJoP5rmkOU94pYMjFw.1
+
+Meeting ID:  895 0882 8375
+Passcode: WYUsX5
+
+
+
+
