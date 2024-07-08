@@ -1018,34 +1018,15 @@ route_table = {
   }
 }
 
-
-zoom new link:
+*****************************************************************************
 
 
 Join Zoom Meeting
-https://us05web.zoom.us/j/89508828375?pwd=Sk6hWfwbSzueJJoP5rmkOU94pYMjFw.1
+https://us05web.zoom.us/j/82172676937?pwd=8oPNr4hqvi1zKErSnf715kNqqw3zfL.1
 
-Meeting ID:  895 0882 8375
-Passcode: WYUsX5
-______________________________________________________
+Meeting ID:  821 7267 6937
+Passcode: VbZe1L
 
-NEW ZOOM LINK
-
-Join Zoom Meeting
-https://us05web.zoom.us/j/87957522861?pwd=P9Ax0nKUQwsRJiYdiMb4UIo1mcWu32.1
-
-Meeting ID:  879 5752 2861
-Passcode: 9PNgWA
-
-
-
--------------------------------------
-
-Join Zoom Meeting
-https://us05web.zoom.us/j/88277155751?pwd=9IshB6aCGHFVVs99xcakd0aZYcECii.1
-
-Meeting ID:  882 7715 5751
-Passcode: WXWTV8
 
 
 
