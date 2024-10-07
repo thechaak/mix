@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<features>
+  <feature name="virtual_background">
+    <model name="vb_basic_base_ov_model" version="109.20240610"/>
+    <model name="vb_premium_affine_ov_model" version="114.20240610"/>
+    <model name="vb_premium_base_ov_model" version="113.20240610"/>
+    <model name="vb_standard_affine_ov_model" version="102.20240610"/>
+    <model name="vb_standard_base_ov_model" version="101.20240610"/>
+  </feature>
+</features>
