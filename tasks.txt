@@ -1,0 +1,64 @@
+lambda function to stop rds aurora cluster:
+-----------
+
+import boto3
+import os
+
+# List of the target DB Cluster Identifiers to stop
+DB_CLUSTER_IDS = [
+    'rds-pfs-database-nonprod-auroracluster-0063jcvmvyfl',
+    'rds-pfs-stg-database-auroracluster-Omoiovj8pj5x',
+    'rds-pfs-database-preprod-auroracluster-bob0jbkdvcei',
+    'rds-pfs-database-prod-auroracluster-1nf83uupv3xg'
+]
+
+# Get the AWS region from the Lambda environment variables
+REGION = os.environ.get('AWS_REGION')
+
+def lambda_handler(event, context):
+    """
+    Stops the specified RDS Aurora DB clusters.
+    """
+    rds_client = boto3.client('rds', region_name=REGION)
+    
+    stopped_clusters = []
+    error_clusters = []
+
+    print(f"Starting process to stop RDS clusters: {DB_CLUSTER_IDS}")
+
+    for cluster_id in DB_CLUSTER_IDS:
+        try:
+            # First, check the cluster's current status
+            cluster_info = rds_client.describe_db_clusters(DBClusterIdentifier=cluster_id)
+            status = cluster_info['DBClusters'][0]['Status']
+            
+            if status == 'stopped':
+                print(f"Cluster {cluster_id} is already stopped.")
+                stopped_clusters.append(f"{cluster_id} (already stopped)")
+            elif status == 'available':
+                # Only attempt to stop if the cluster is available
+                rds_client.stop_db_cluster(DBClusterIdentifier=cluster_id)
+                print(f"Successfully initiated stop for DB cluster: {cluster_id}")
+                stopped_clusters.append(cluster_id)
+            else:
+                # Log if the cluster is not in a stoppable state
+                print(f"Cluster {cluster_id} is not 'available' (current state: {status}). Cannot stop.")
+                error_clusters.append(f"{cluster_id} (state: {status})")
+
+        except Exception as e:
+            error_message = f"Error processing cluster {cluster_id}: {str(e)}"
+            print(error_message)
+            error_clusters.append(f"{cluster_id} (error)")
+
+    print("\n--- Summary ---")
+    print(f"Processed successfully: {len(stopped_clusters)}")
+    print(f"Encountered errors or non-stoppable states: {len(error_clusters)}")
+
+    return {
+        'statusCode': 200,
+        'body': {
+            'stopped_or_found_stopped': stopped_clusters,
+            'errors_or_wrong_state': error_clusters
+        }
+    }
+
