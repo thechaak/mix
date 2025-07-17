@@ -241,5 +241,164 @@ Resources:
 
 ---------------------------------
 
+stop-rds-lambda-stack.yaml
 
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  CloudFormation stack to create a Lambda function that stops specific RDS Aurora clusters every 7 days.
+
+Parameters:
+  IamBoundaryPolicyName:
+    Type: String
+    Default: ccoe/js-developer
+  CostcentreTag:
+    Type: String
+    Default: PD7563
+  EnvironmentTag:
+    Type: String
+    Default: dev
+  OwnerTag:
+    Type: String
+    Default: supply-chain
+  ProjectTag:
+    Type: String
+  LiveTag:
+    Type: String
+    AllowedValues:
+      - "yes"
+      - "no"
+    Default: "no"
+  LambdaFunctionName:
+    Type: String
+    Default: stop-grasshopper-rds-clusters
+  ScheduleExpression:
+    Type: String
+    Default: rate(7 days)
+    Description: The schedule to trigger the Lambda function (e.g., rate(7 days) or a cron expression).
+
+Resources:
+  # MODIFIED: The Lambda execution role now attaches your pre-existing policy.
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/LambdaRDSStopPolicy' # ATTACHED your existing policy for RDS permissions
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole' # REPLACED broader policies with just basic logging
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Description: !Sub 'Execution role for the ${LambdaFunctionName} function'
+      PermissionsBoundary: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/${IamBoundaryPolicyName}'
+      Tags:
+        - Key: costcentre
+          Value: !Ref 'CostcentreTag'
+        - Key: environment
+          Value: !Ref 'EnvironmentTag'
+        - Key: live
+          Value: !Ref 'LiveTag'
+        - Key: owner
+          Value: !Ref 'OwnerTag'
+        - Key: project
+          Value: !Ref 'ProjectTag'
+
+  # NEW: The Lambda Function resource, with Python code embedded directly.
+  MyLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Ref LambdaFunctionName
+      Handler: index.lambda_handler
+      Runtime: python3.12
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 60
+      Code:
+        ZipFile: |
+          import boto3
+          import os
+
+          # List of the target DB Cluster Identifiers to stop
+          DB_CLUSTER_IDS = [
+              'rds-pfs-database-nonprod-auroracluster-0063jcvmvyfl',
+              'rds-pfs-stg-database-auroracluster-Omoiovj8pj5x',
+              'rds-pfs-database-preprod-auroracluster-bob0jbkdvcei',
+              'rds-pfs-database-prod-auroracluster-1nf83uupv3xg'
+          ]
+
+          # Get the AWS region from the Lambda environment variables
+          REGION = os.environ.get('AWS_REGION')
+
+          def lambda_handler(event, context):
+              """
+              Stops the specified RDS Aurora DB clusters.
+              """
+              rds_client = boto3.client('rds', region_name=REGION)
+              
+              stopped_clusters = []
+              error_clusters = []
+
+              print(f"Starting process to stop RDS clusters: {DB_CLUSTER_IDS}")
+
+              for cluster_id in DB_CLUSTER_IDS:
+                  try:
+                      # First, check the cluster's current status
+                      cluster_info = rds_client.describe_db_clusters(DBClusterIdentifier=cluster_id)
+                      status = cluster_info['DBClusters'][0]['Status']
+                      
+                      if status == 'stopped':
+                          print(f"Cluster {cluster_id} is already stopped.")
+                          stopped_clusters.append(f"{cluster_id} (already stopped)")
+                      elif status == 'available':
+                          # Only attempt to stop if the cluster is available
+                          rds_client.stop_db_cluster(DBClusterIdentifier=cluster_id)
+                          print(f"Successfully initiated stop for DB cluster: {cluster_id}")
+                          stopped_clusters.append(cluster_id)
+                      else:
+                          # Log if the cluster is not in a stoppable state
+                          print(f"Cluster {cluster_id} is not 'available' (current state: {status}). Cannot stop.")
+                          error_clusters.append(f"{cluster_id} (state: {status})")
+
+                  except Exception as e:
+                      error_message = f"Error processing cluster {cluster_id}: {str(e)}"
+                      print(error_message)
+                      error_clusters.append(f"{cluster_id} (error)")
+
+              print("\n--- Summary ---")
+              print(f"Processed successfully: {len(stopped_clusters)}")
+              print(f"Encountered errors or non-stoppable states: {len(error_clusters)}")
+
+              return {
+                  'statusCode': 200,
+                  'body': {
+                      'stopped_or_found_stopped': stopped_clusters,
+                      'errors_or_wrong_state': error_clusters
+                  }
+              }
+
+  # NEW: The EventBridge Rule to schedule the Lambda function.
+  EventBridgeRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: 'Rule to trigger the RDS stop Lambda function every 7 days'
+      Name: 'stop-grasshopper-rds-schedule'
+      ScheduleExpression: !Ref ScheduleExpression
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt MyLambdaFunction.Arn
+          Id: 'StopRdsLambdaTarget'
+
+  # NEW: The permission that allows the EventBridge Rule to invoke the Lambda.
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt MyLambdaFunction.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt EventBridgeRule.Arn
+
+----------
 
