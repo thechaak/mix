@@ -1,4 +1,4 @@
-lambda function to stop rds aurora cluster:
+lambda function to stop rds aurora cluster| :
 -----------
 
 import boto3
@@ -65,7 +65,7 @@ def lambda_handler(event, context):
 
 ---------------------------------------------------
 
-cloud formation script to create lambda with other fucntionality:
+cloud formation script to create lambda along with IAM policy and IAM role:
 
 AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudFormation template to create a Lambda function with access to Secrets Manager, EventBridge, and CloudWatch Logs.
@@ -242,10 +242,9 @@ Resources:
 ---------------------------------
 
 stop-rds-lambda-stack.yaml
-
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
-  CloudFormation stack to create a Lambda function that stops specific RDS Aurora clusters every 7 days.
+  CloudFormation stack to create a Lambda function and IAM resources to stop specific RDS Aurora clusters every 7 days.
 
 Parameters:
   IamBoundaryPolicyName:
@@ -274,16 +273,31 @@ Parameters:
   ScheduleExpression:
     Type: String
     Default: rate(7 days)
-    Description: The schedule to trigger the Lambda function (e.g., rate(7 days) or a cron expression).
 
 Resources:
-  # MODIFIED: The Lambda execution role now attaches your pre-existing policy.
+  LambdaRDSStopPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - rds:DescribeDBClusters
+              - rds:StopDBCluster
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: "arn:aws:logs:*:*:*"
+
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
       ManagedPolicyArns:
-        - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/LambdaRDSStopPolicy' # ATTACHED your existing policy for RDS permissions
-        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole' # REPLACED broader policies with just basic logging
+        - !Ref LambdaRDSStopPolicy
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -307,7 +321,6 @@ Resources:
         - Key: project
           Value: !Ref 'ProjectTag'
 
-  # NEW: The Lambda Function resource, with Python code embedded directly.
   MyLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -321,65 +334,47 @@ Resources:
           import boto3
           import os
 
-          # List of the target DB Cluster Identifiers to stop
+          RDS_REGION = 'eu-west-1'
+
           DB_CLUSTER_IDS = [
               'rds-pfs-database-nonprod-auroracluster-0063jcvmvyfl',
               'rds-pfs-stg-database-auroracluster-Omoiovj8pj5x',
-              'rds-pfs-database-preprod-auroracluster-bob0jbkdvcei',
-              'rds-pfs-database-prod-auroracluster-1nf83uupv3xg'
+              ##'rds-pfs-database-preprod-auroracluster-bob0jbkdvcei',
+              ##'rds-pfs-database-prod-auroracluster-1nf83uupv3xg'
           ]
 
-          # Get the AWS region from the Lambda environment variables
-          REGION = os.environ.get('AWS_REGION')
-
           def lambda_handler(event, context):
-              """
-              Stops the specified RDS Aurora DB clusters.
-              """
-              rds_client = boto3.client('rds', region_name=REGION)
-              
+              rds_client = boto3.client('rds', region_name=RDS_REGION)
               stopped_clusters = []
               error_clusters = []
-
-              print(f"Starting process to stop RDS clusters: {DB_CLUSTER_IDS}")
-
+              print(f"Starting process to stop RDS clusters in region: {RDS_REGION}")
               for cluster_id in DB_CLUSTER_IDS:
                   try:
-                      # First, check the cluster's current status
                       cluster_info = rds_client.describe_db_clusters(DBClusterIdentifier=cluster_id)
                       status = cluster_info['DBClusters'][0]['Status']
-                      
                       if status == 'stopped':
                           print(f"Cluster {cluster_id} is already stopped.")
                           stopped_clusters.append(f"{cluster_id} (already stopped)")
                       elif status == 'available':
-                          # Only attempt to stop if the cluster is available
                           rds_client.stop_db_cluster(DBClusterIdentifier=cluster_id)
                           print(f"Successfully initiated stop for DB cluster: {cluster_id}")
                           stopped_clusters.append(cluster_id)
                       else:
-                          # Log if the cluster is not in a stoppable state
                           print(f"Cluster {cluster_id} is not 'available' (current state: {status}). Cannot stop.")
                           error_clusters.append(f"{cluster_id} (state: {status})")
-
+                  except rds_client.exceptions.DBClusterNotFoundFault:
+                      error_message = f"Error processing cluster {cluster_id}: DBClusterNotFoundFault. Verify the cluster ID and REGION ('{RDS_REGION}') are correct."
+                      print(error_message)
+                      error_clusters.append(f"{cluster_id} (not found in region)")
                   except Exception as e:
                       error_message = f"Error processing cluster {cluster_id}: {str(e)}"
                       print(error_message)
                       error_clusters.append(f"{cluster_id} (error)")
-
               print("\n--- Summary ---")
               print(f"Processed successfully: {len(stopped_clusters)}")
               print(f"Encountered errors or non-stoppable states: {len(error_clusters)}")
+              return {'statusCode': 200, 'body': {'stopped_or_found_stopped': stopped_clusters, 'errors_or_wrong_state': error_clusters}}
 
-              return {
-                  'statusCode': 200,
-                  'body': {
-                      'stopped_or_found_stopped': stopped_clusters,
-                      'errors_or_wrong_state': error_clusters
-                  }
-              }
-
-  # NEW: The EventBridge Rule to schedule the Lambda function.
   EventBridgeRule:
     Type: AWS::Events::Rule
     Properties:
@@ -391,7 +386,6 @@ Resources:
         - Arn: !GetAtt MyLambdaFunction.Arn
           Id: 'StopRdsLambdaTarget'
 
-  # NEW: The permission that allows the EventBridge Rule to invoke the Lambda.
   LambdaInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -399,6 +393,5 @@ Resources:
       Action: 'lambda:InvokeFunction'
       Principal: 'events.amazonaws.com'
       SourceArn: !GetAtt EventBridgeRule.Arn
-
 ----------
 
