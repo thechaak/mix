@@ -1,5 +1,18 @@
 -----
 https://github.com/Ramya-Mandava/testing1
+
+=---
+Repository type	Azure DevOps Git
+Azure DevOps Account	CygnetHealthData
+Project name	Data and Analytics
+Repository name	ADF_DW
+Collaboration branch	dev
+Publish branch	adf_publish
+Root folder	/
+Last published commit	36aee1fa10d5e0ea37e2e24e288df4cf3a128912
+Tenant	c1f644d0-461d-4bdc-bde0-fc1d3a8da667
+Publish (from ADF Studio)	Enabled
+Custom comment	Enabled
 ----
 
 curl -X POST \
