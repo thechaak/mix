@@ -1,3 +1,231 @@
+Topics:
+  Topics:
+
+    - Name: sainsburys.applications.sc-sss.aura.stock-transfer.v1
+      PartitionsCount: 3
+      Settings:
+        cleanup.policy: delete
+        retention.ms: 7889400000
+
+    - Name: sainsburys.applications.sc-sss-argos.stock-transfer-internal.v2
+      PartitionsCount: 1
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/stock/stock_transfer_internal.avsc
+          CompatibilityMode: FULL_TRANSITIVE
+
+    - Name: sainsburys.data.sc-sss-argos.stock-transfer.v3
+      PartitionsCount: 1
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/stock/stock_transfer_outputter.avsc
+          CompatibilityMode: FULL_TRANSITIVE
+
+    - Name: sainsburys.data.sc-sss-argos.stock-transfer-lfc.v1
+      PartitionsCount: 1
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/stock/stock_transfer_lfc_outputter.avsc
+          CompatibilityMode: FULL_TRANSITIVE
+
+    - Name: sainsburys.applications.sc-sss.argos.product.internal.v7
+      PartitionsCount: 1
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/product/product_internal.avsc
+          CompatibilityMode: FULL_TRANSITIVE
+
+    - Name: sainsburys.applications.sc-sss-argos.location-stores-internal.v1
+      PartitionsCount: 1
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/location/location_internal.avsc
+          CompatibilityMode: FULL_TRANSITIVE
+
+    - Name: sainsburys.applications.sc-sss-argos.depot-internal.v1
+      PartitionsCount: 1
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/depot/depot_internal.avsc
+          CompatibilityMode: FULL_TRANSITIVE
+
+    - Name: sainsburys.applications.sc-sss.argos.supplier.internal.v1
+      PartitionsCount: 1
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/supplier/supplier_internal.avsc
+          CompatibilityMode: FULL_TRANSITIVE
+
+    - Name: sainsburys.data.sc-sss-argos.absolute-stock.v3
+      PartitionsCount: 3
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/stock/absolute_stock_outputter.avsc
+          CompatibilityMode: FULL_TRANSITIVE
+
+    - Name: sainsburys.data.sc-sss-argos.absolute-stock-lfc.v1
+      PartitionsCount: 3
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/stock/absolute_stock_outputter_lfc.avsc
+          CompatibilityMode: FULL_TRANSITIVE
+
+    - Name: sainsburys.applications.sc-sss-argos.stock-adjustments.internal.v1
+      PartitionsCount: 3
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/stock/stock_adjustments_internal.avsc
+          CompatibilityMode: FULL_TRANSITIVE
+
+    - Name: sainsburys.data.sc-sss-argos.stock-adjustments.v1
+      PartitionsCount: 3
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/stock/stock_adjustments_outputter.avsc
+          CompatibilityMode: FULL_TRANSITIVE
+
+    - Name: sainsburys.data.sc-sss-argos.stock-adjustments-lfc.v1
+      PartitionsCount: 3
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/stock/stock_adjustments_lfc_outputter.avsc
+          CompatibilityMode: FULL_TRANSITIVE
+
+    - Name: sainsburys.applications.sc-sss-argos.absolute-stock-internal.v4
+      PartitionsCount: 3
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/stock/absolute_stock_internal.avsc
+          CompatibilityMode: FORWARD
+
+
+    - Name: internal.supply-chain.sss.argos.inventory.inter-store-transfer-eod.extract.v1
+      PartitionsCount: 2
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/stock/argos_inventory_inter_store_transfer_eod_extract.avsc
+          CompatibilityMode: FULL_TRANSITIVE
+
+    - Name: internal.supply-chain.sss.argos.inventory.disposal-eod.extract.v1
+      PartitionsCount: 2
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/stock/argos_inventory_disposal_eod_extract.avsc
+          CompatibilityMode: FULL_TRANSITIVE
+
+    - Name: internal.supply-chain.sss.argos.inventory.inter-store-transfer-eod.v1
+      PartitionsCount: 2
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/stock/argos_inventory_inter_store_transfer_eod.avsc
+          CompatibilityMode: FULL_TRANSITIVE
+
+    - Name: internal.supply-chain.sss.argos.inventory.disposal-eod.v1
+      PartitionsCount: 2
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/stock/argos_inventory_disposal_eod.avsc
+          CompatibilityMode: FULL_TRANSITIVE
+
+    - Name: internal.supply-chain.sss.argos.stock.despatch.extract.v4
+      PartitionsCount: 1
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/stock/argos_stock_despatch_extract_v4.avsc
+          CompatibilityMode: FULL_TRANSITIVE
+
+    - Name: internal.supply-chain.sss.argos.stock.despatch.v4
+      PartitionsCount: 1
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/stock/argos_stock_despatch_v4.avsc
+          CompatibilityMode: FULL_TRANSITIVE
+
+    - Name: internal.supply-chain.sss.argos.stock.despatch.v5
+      PartitionsCount: 1
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/stock/stock_transfer_outputter.avsc
+          CompatibilityMode: FULL_TRANSITIVE
+
+  # -----------------------------------
+  # Argos Stock Adjustment Input Topic
+  # -----------------------------------
+    - Name: internal.supply-chain.sss.argos.stock.adjustment.extract.v1
+      PartitionsCount: 2
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/stock/argos_stock_adjustment_extract.avsc
+          CompatibilityMode: FULL_TRANSITIVE
+
+    - Name: internal.supply-chain.sss.argos.stock.adjustment.v1
+      PartitionsCount: 2
+      Schema:
+        Value:
+          Serializer: AVRO
+          Definition: argosschemas/stock/argos_stock_adjustments_v1.avsc
+          CompatibilityMode: FULL_TRANSITIVE
+    # ----------------------
+    # Disposal DLQ Topic
+    # ----------------------
+    - Name: private.supply-chain.sss.argos.inventory.disposal-eod.dlq.v1
+      PartitionsCount: 1
+
+    # ----------------------
+    # Inter Store Transfer DLQ Topic
+    # ----------------------
+    - Name: private.supply-chain.sss.argos.inventory.inter-store-transfer-eod.dlq.v1
+      PartitionsCount: 1
+
+    # ----------------------
+    # Location - Depots DLQ Topic
+    # ----------------------
+    - Name: private.supply-chain.sss.argos.inventory.location.depot.dlq.v1
+      PartitionsCount: 1
+
+    # ----------------------
+    # Product DLQ Topic
+    # ----------------------
+    - Name: private.supply-chain.sss.argos.inventory.product.dlq.v1
+      PartitionsCount: 1
+
+    # ----------------------
+    # Location - Stores DLQ Topic
+    # ----------------------
+    - Name: private.supply-chain.sss.argos.inventory.location.store.dlq.v1
+      PartitionsCount: 1
+
+    # ----------------------
+    # Stock Despatch DLQ Topic
+    # ----------------------
+    - Name: dlq.sc-sss-argos-stock-despatch-sink-connector.internal.supply-chain.sss.argos.stock.despatch.v4
+      PartitionsCount: 1
+      Settings:
+        retention.ms: 604800000
+
+----------------
+
 lambda function to stop rds aurora cluster| :
 -----------
 
