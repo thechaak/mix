@@ -1,3 +1,20 @@
+ Duplicate Records are published in Transactions Connector topic
+Incident Summary: RSS Network Outage and Duplicate Message Issue
+
+On 5th July, an RSS network outage occurred and was reported by the support team under incident IDs INC11997436 and INC11997814. As a result, no messages were received on the connector topic during the outage. Once the network was restored, messages began flowing again after the connectors were restarted.
+
+On 7th July, the ASPIRe team (Avocado) reported an issue involving 1,000 duplicate messages published to the output topic:
+sainsburys.data.sc-sss.txns.receipts.v5. This was logged under iTask ID: ITASK0041028.
+
+Upon investigation, we found that each duplicated message existed twice in the connector topic, with the following offset pattern:
+
+Original message: Offset 274332811
+
+Duplicate message: Offset 274333811
+
+There are duplicate messages published in SOH connector topic as well, attaching screenshots for reference.
+
+---------------------------
 Topics:
   Topics:
 
