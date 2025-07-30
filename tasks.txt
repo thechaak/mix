@@ -1,4 +1,13 @@
- Duplicate Records are published in Transactions Connector topic
+on 24th July 07:30, Observed Sales transactions, pulse messages etc., messages were not flowing into the replicated topics with in the SC cluster. After posting the issue in Cloud Engineering channel the issue got resolved. 
+
+Please do analysis on how the issue resolved ? what changes are made ? this could be a potential risk for prod environment.
+
+Attaching the screenshots for reference
+Upon checking the kafbatui, found that, connectors were missing. 
+
+------------------------
+
+Duplicate Records are published in Transactions Connector topic
 Incident Summary: RSS Network Outage and Duplicate Message Issue
 
 On 5th July, an RSS network outage occurred and was reported by the support team under incident IDs INC11997436 and INC11997814. As a result, no messages were received on the connector topic during the outage. Once the network was restored, messages began flowing again after the connectors were restarted.
