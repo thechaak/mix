@@ -1,3 +1,136 @@
+dump:
+
+{
+    "eventVersion": "1.11",
+    "userIdentity": {
+        "type": "AssumedRole",
+        "principalId": "AROA2FUPZE66IHIEC7F5E:a509835ca8743ffda5df764340b9eb73",
+        "arn": "arn:aws:sts::699307468732:assumed-role/sc-sss-aux-inputters-loca-storeimporterIamRoleToTri-afeAqeXQg0oG/a509835ca8743ffda5df764340b9eb73",
+        "accountId": "699307468732",
+        "accessKeyId": "ASIA2FUPZE66M56VK7PC",
+        "sessionContext": {
+            "sessionIssuer": {
+                "type": "Role",
+                "principalId": "AROA2FUPZE66IHIEC7F5E",
+                "arn": "arn:aws:iam::699307468732:role/sc-sss-aux-inputters-loca-storeimporterIamRoleToTri-afeAqeXQg0oG",
+                "accountId": "699307468732",
+                "userName": "sc-sss-aux-inputters-loca-storeimporterIamRoleToTri-afeAqeXQg0oG"
+            },
+            "attributes": {
+                "creationDate": "2025-07-24T09:00:08Z",
+                "mfaAuthenticated": "false"
+            }
+        },
+        "invokedBy": "events.amazonaws.com"
+    },
+    "eventTime": "2025-07-24T09:00:08Z",
+    "eventSource": "ecs.amazonaws.com",
+    "eventName": "RunTask",
+    "awsRegion": "eu-west-1",
+    "sourceIPAddress": "events.amazonaws.com",
+    "userAgent": "events.amazonaws.com",
+    "requestParameters": {
+        "clientToken": "884e460e-25bb-4bf7-a9c0-ce5722bdae7e",
+        "cluster": "arn:aws:ecs:eu-west-1:699307468732:cluster/devel",
+        "count": 1,
+        "enableECSManagedTags": false,
+        "enableExecuteCommand": false,
+        "launchType": "FARGATE",
+        "networkConfiguration": {
+            "awsvpcConfiguration": {
+                "assignPublicIp": "DISABLED",
+                "securityGroups": [
+                    "sg-09e8f778d604cc8ef"
+                ],
+                "subnets": [
+                    "subnet-0e04c19e8b1e3f3ac",
+                    "subnet-05a29c79445d349b5"
+                ]
+            }
+        },
+        "platformVersion": "1.4.0",
+        "startedBy": "events-rule/sc-sss-aux-inputters-loc",
+        "taskDefinition": "arn:aws:ecs:eu-west-1:699307468732:task-definition/storeimporter:1590",
+        "dryrun": false
+    },
+    "responseElements": {
+        "tasks": [
+            {
+                "attachments": [
+                    {
+                        "id": "d2b06b29-2bd7-4400-8a07-8ff2e8cad13f",
+                        "type": "ElasticNetworkInterface",
+                        "status": "PRECREATED",
+                        "details": [
+                            {
+                                "name": "subnetId",
+                                "value": "subnet-0e04c19e8b1e3f3ac"
+                            }
+                        ]
+                    }
+                ],
+                "attributes": [
+                    {
+                        "name": "ecs.cpu-architecture",
+                        "value": "x86_64"
+                    }
+                ],
+                "availabilityZone": "eu-west-1b",
+                "clusterArn": "arn:aws:ecs:eu-west-1:699307468732:cluster/devel",
+                "containers": [
+                    {
+                        "containerArn": "arn:aws:ecs:eu-west-1:699307468732:container/devel/b2265056ae1f40ddbc0941a8b5d6e42c/5e83e706-572f-4a22-9018-89bc4483ba39",
+                        "taskArn": "arn:aws:ecs:eu-west-1:699307468732:task/devel/b2265056ae1f40ddbc0941a8b5d6e42c",
+                        "name": "storeimporter",
+                        "image": "013924366973.dkr.ecr.eu-west-1.amazonaws.com/sss-aux-inputters-location@sha256:4c7b58cbf8bd39e63a0eda62175fedc8127b896a7d79f578a50fe4003da8b1c1",
+                        "lastStatus": "PENDING",
+                        "networkInterfaces": [],
+                        "cpu": "0"
+                    }
+                ],
+                "cpu": "256",
+                "createdAt": "Jul 24, 2025, 9:00:08 AM",
+                "desiredStatus": "RUNNING",
+                "enableExecuteCommand": false,
+                "group": "family:storeimporter",
+                "lastStatus": "PROVISIONING",
+                "launchType": "FARGATE",
+                "memory": "2048",
+                "overrides": {
+                    "containerOverrides": [
+                        {
+                            "name": "storeimporter"
+                        }
+                    ],
+                    "inferenceAcceleratorOverrides": []
+                },
+                "platformFamily": "Linux",
+                "platformVersion": "1.4.0",
+                "startedBy": "events-rule/sc-sss-aux-inputters-loc",
+                "tags": [],
+                "taskArn": "arn:aws:ecs:eu-west-1:699307468732:task/devel/b2265056ae1f40ddbc0941a8b5d6e42c",
+                "taskDefinitionArn": "arn:aws:ecs:eu-west-1:699307468732:task-definition/storeimporter:1590",
+                "version": 1,
+                "ephemeralStorage": {
+                    "sizeInGiB": 20
+                },
+                "fargateEphemeralStorage": {
+                    "sizeInGiB": 20
+                }
+            }
+        ],
+        "failures": []
+    },
+    "requestID": "b8a84424-1f06-4496-9548-70bb09178bd6",
+    "eventID": "0e2c85a2-6a47-41a1-876c-adc48f7302af",
+    "readOnly": false,
+    "eventType": "AwsApiCall",
+    "managementEvent": true,
+    "recipientAccountId": "699307468732",
+    "eventCategory": "Management"
+}
+---
+
 -----
 https://github.com/Ramya-Mandava/testing1
 
