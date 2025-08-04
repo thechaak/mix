@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Alarms for sc-sss-argos-stock-movement-picked-inventory.
+
+Parameters:
+  IamBoundaryPolicyName:
+    Type: String
+    Default: ccoe/js-developer
+    AllowedPattern: '[a-zA-Z0-9-\/.]+'
+  StackName:
+    Type: String
+
+Resources:
+  RunningTask:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+        AlarmName: Running Task Stock Movement Picked Inventory Sink Connector Alarm
+        ActionsEnabled: true
+        OKActions:
+            - Fn::ImportValue: SNS::sns--sss-connect-clusters::Name
+        AlarmActions:
+            - Fn::ImportValue: SNS::sns--sss-connect-clusters::Name
+        MetricName: running
+        Namespace: KafkaConnect/Watcher
+        Statistic: Sum
+        Dimensions:
+            - Name: ConnectCluster
+              Value: connect.prod.sss-argos.sc.js-devops.internal_8083
+            - Name: environment
+              Value: argos-prod
+            - Name: name
+              Value: sc-sss-argos-prod
+            - Name: ConnectorName
+              Value: sc-sss-argos-stock-movement-picked-inventory-sink-connector
+        Period: 60
+        EvaluationPeriods: 1
+        DatapointsToAlarm: 1
+        Threshold: 1
+        ComparisonOperator: LessThanThreshold
+        TreatMissingData: missing
+
+  FailedConnector:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+        AlarmName: Failed Stock Movement Picked Inventory Sink Connector Alarm
+        ActionsEnabled: true
+        OKActions:
+            - Fn::ImportValue: SNS::sns--sss-connect-clusters::Name
+        AlarmActions:
+            - Fn::ImportValue: SNS::sns--sss-connect-clusters::Name
+        MetricName: failed
+        Namespace: KafkaConnect/Watcher
+        Statistic: Sum
+        Dimensions:
+            - Name: ConnectCluster
+              Value: connect.prod.sss-argos.sc.js-devops.internal_8083
+            - Name: environment
+              Value: argos-prod
+            - Name: name
+              Value: sc-sss-argos-prod
+            - Name: ConnectorName
+              Value: sc-sss-argos-stock-movement-picked-inventory-sink-connector
+        Period: 60
+        EvaluationPeriods: 1
+        DatapointsToAlarm: 1
+        Threshold: 1
+        ComparisonOperator: GreaterThanThreshold
+        TreatMissingData: notBreaching
