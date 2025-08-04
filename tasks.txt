@@ -15,7 +15,58 @@ SPR by Store and SPR by SKU - everyday from 12 PM to 6 PM we should send 1 file 
 
 example - for 12 PM file  - if file not sent by 12:15 PM trigger callout. same applies until 6 PM file
 
+related info:
+WID-batch_processed_count
+{
+    "metrics": [
+        [ "sc-cosmos-file-transfer-service_prod", "batch_processed_count", "TagId", "WID" ]
+    ],
+    "view": "timeSeries",
+    "stacked": false,
+    "region": "eu-west-1",
+    "title": "WID-batch_processed_count",
+    "period": 900,
+    "stat": "Sum"
+}
 
+SPR_SKU-batch_processed_count
+{
+    "metrics": [
+        [ "sc-cosmos-file-transfer-service_prod", "batch_processed_count", "TagId", "SPR_SKU" ]
+    ],
+    "view": "timeSeries",
+    "stacked": false,
+    "region": "eu-west-1",
+    "title": "SPR_SKU-batch_processed_count",
+    "period": 3600,
+    "stat": "Sum"
+}
+
+SPR_STORE-batch_processed_count
+{
+    "metrics": [
+        [ "sc-cosmos-file-transfer-service_prod", "batch_processed_count", "TagId", "SPR_STORE", { "region": "eu-west-1" } ]
+    ],
+    "view": "timeSeries",
+    "stacked": false,
+    "region": "eu-west-1",
+    "title": "SPR_STORE-batch_processed_count",
+    "period": 3600,
+    "stat": "Sum"
+}
+
+EOD-batch_processed_count
+{
+    "metrics": [
+        [ "file_transfer_service", "batch_processed_count", "TagId", "EOD", { "region": "eu-west-1" } ]
+    ],
+    "view": "timeSeries",
+    "stacked": false,
+    "region": "eu-west-1",
+    "title": "EOD-batch_processed_count",
+    "period": 3600,
+    "stat": "Sum"
+}
 ------------
 on 24th July 07:30, Observed Sales transactions, pulse messages etc., messages were not flowing into the replicated topics with in the SC cluster. After posting the issue in Cloud Engineering channel the issue got resolved. 
 
