@@ -1,0 +1,269 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template to create CloudWatch alarms for an Apache Flink application in Kinesis Data Analytics.
+
+Parameters:
+  ApplicationName:
+    Description: "The name of the Apache Flink application"
+    Type: String
+  AlarmSNSTopic:
+    Description: "Existing SNS Topic ARN for alarm notifications"
+    Type: String
+  MetricNamespace:
+    Type: String
+    Description: "Namespace for the metric"
+
+Resources:
+  # # CPU Utilization Alarm
+  # FlinkCPUUtilizationAlarmCALLOUT:
+  #   Type: "AWS::CloudWatch::Alarm"
+  #   Properties: 
+  #     AlarmName: !Sub "CALLOUT-${ApplicationName}-CPUUtilization-Alarm"
+  #     AlarmDescription: "Alarm for CPU Utilization above threshold in Flink Application."
+  #     MetricName: "cpuUtilization"
+  #     Namespace: "AWS/KinesisAnalytics"
+  #     Dimensions:
+  #       - Name: "Application"
+  #         Value: !Ref ApplicationName
+  #     Statistic: "Average"
+  #     Period: 300  # 5 minutes
+  #     EvaluationPeriods: 1
+  #     Threshold: 90
+  #     ComparisonOperator: "GreaterThanOrEqualToThreshold"
+  #     AlarmActions:
+  #       - !Ref AlarmSNSTopic
+  #     OKActions:
+  #       - !Ref AlarmSNSTopic
+  #     #Unit: "Percent"
+
+  # # CPU Utilization Alarm
+  # FlinkCPUUtilizationAlarm:
+  #   Type: "AWS::CloudWatch::Alarm"
+  #   Properties: 
+  #     AlarmName: !Sub "${ApplicationName}-CPUUtilization-Alarm"
+  #     AlarmDescription: "Alarm for CPU Utilization above threshold in Flink Application."
+  #     MetricName: "cpuUtilization"
+  #     Namespace: "AWS/KinesisAnalytics"
+  #     Dimensions:
+  #       - Name: "Application"
+  #         Value: !Ref ApplicationName
+  #     Statistic: "Average"
+  #     Period: 300  # 5 minutes
+  #     EvaluationPeriods: 1
+  #     Threshold: 75
+  #     ComparisonOperator: "GreaterThanOrEqualToThreshold"
+  #     AlarmActions:
+  #       - !Ref AlarmSNSTopic
+  #     OKActions:
+  #       - !Ref AlarmSNSTopic
+  #     #Unit: "Percent"
+
+  # Memory Utilization Alarm
+  # FlinkMemoryUtilizationAlarmCALLOUT:
+  #   Type: "AWS::CloudWatch::Alarm"
+  #   Properties: 
+  #     AlarmName: !Sub "CALLOUT-${ApplicationName}-MemoryUtilization-Alarm"
+  #     AlarmDescription: "Alarm for Memory Utilization above threshold in Flink Application."
+  #     MetricName: "heapMemoryUtilization"
+  #     Namespace: "AWS/KinesisAnalytics"
+  #     Dimensions:
+  #       - Name: "Application"
+  #         Value: !Ref ApplicationName
+  #     Statistic: "Average"
+  #     Period: 300  # 5 minutes
+  #     EvaluationPeriods: 1
+  #     Threshold: 90
+  #     ComparisonOperator: "GreaterThanOrEqualToThreshold"
+  #     AlarmActions:
+  #       - !Ref AlarmSNSTopic
+  #       - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cosmosIncidentCreation
+      #Unit: "Percent"
+
+  # Memory Utilization Alarm
+  # FlinkMemoryUtilizationAlarm:
+  #   Type: "AWS::CloudWatch::Alarm"
+  #   Properties: 
+  #     AlarmName: !Sub "${ApplicationName}-MemoryUtilization-Alarm"
+  #     AlarmDescription: "Alarm for Memory Utilization above threshold in Flink Application."
+  #     MetricName: "heapMemoryUtilization"
+  #     Namespace: "AWS/KinesisAnalytics"
+  #     Dimensions:
+  #       - Name: "Application"
+  #         Value: !Ref ApplicationName
+  #     Statistic: "Average"
+  #     Period: 300  # 5 minutes
+  #     EvaluationPeriods: 1
+  #     Threshold: 75
+  #     ComparisonOperator: "GreaterThanOrEqualToThreshold"
+  #     AlarmActions:
+  #       - !Ref AlarmSNSTopic
+  #     #Unit: "Percent"
+
+  # Number of Failed Checkpoints Alarm
+  FlinkFailedCheckpointsAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      AlarmName: !Sub "${ApplicationName}-FailedCheckpoints-Alarm"
+      AlarmDescription: "Alarm for number of failed checkpoints in Flink Application."
+      MetricName: "numberOfFailedCheckpoints"
+      Namespace: "AWS/KinesisAnalytics"
+      Dimensions:
+        - Name: "Application"
+          Value: !Ref ApplicationName
+      Statistic: "Maximum"
+      Period: 300  # 5 minutes
+      EvaluationPeriods: 1
+      Threshold: 5  # Customize based on your application's threshold
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      AlarmActions:
+        - !Ref AlarmSNSTopic
+      #Unit: "Count"
+
+  # Records Lag Max Alarm
+  # FlinkRecordsLagMaxAlarm:
+  #   Type: "AWS::CloudWatch::Alarm"
+  #   Properties:
+  #     AlarmName: !Sub "${ApplicationName}-RecordsLagMax-Alarm"
+  #     AlarmDescription: "Alarm for maximum records lag in Flink Application."
+  #     MetricName: "records_lag_max"
+  #     Namespace: "AWS/KinesisAnalytics"
+  #     Dimensions:
+  #       - Name: "Application"
+  #         Value: !Ref ApplicationName
+  #     Statistic: "Maximum"
+  #     Period: 300  # 5 minutes
+  #     EvaluationPeriods: 1
+  #     Threshold: 10000  # Customize based on your application's threshold
+  #     ComparisonOperator: "GreaterThanOrEqualToThreshold"
+  #     AlarmActions:
+  #       - !Ref AlarmSNSTopic
+      #Unit: "Count"
+
+  # Callout for Records Lag Max Alarm
+  FlinkRecordsLagMaxAlarmCallout:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      AlarmName: !Sub "CALLOUT-${ApplicationName}-RecordsLagMax-Alarm"
+      AlarmDescription: "Alarm for maximum records lag in Flink Application."
+      MetricName: "records_lag_max"
+      Namespace: "AWS/KinesisAnalytics"
+      Dimensions:
+        - Name: "Application"
+          Value: !Ref ApplicationName
+      Statistic: "Maximum"
+      Period: 300  # 5 minutes
+      EvaluationPeriods: 1
+      Threshold: 25000  # Customize based on your application's threshold
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      AlarmActions:
+        - !Ref AlarmSNSTopic
+        - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cosmosIncidentCreation
+      #Unit: "Count"
+
+ # Downtime Alarm
+  FlinkDowntimeAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      AlarmName: !Sub "CALLOUT-${ApplicationName}-Downtime-Alarm"
+      AlarmDescription: "Alarm for downtime in Flink Application."
+      MetricName: "downtime"  # Metric name for downtime
+      Namespace: "AWS/KinesisAnalytics"
+      Dimensions:
+        - Name: "Application"
+          Value: !Ref ApplicationName
+      Statistic: "Sum"  # Assuming we want the total downtime
+      Period: 300  # 5 minutes
+      EvaluationPeriods: 1
+      Threshold: 1  # Customize based on your application's downtime threshold
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      AlarmActions:
+        - !Ref AlarmSNSTopic
+        - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cosmosIncidentCreation
+      #Unit: "Seconds"  # Assuming downtime is measured in seconds
+
+  # Log type error Alarm and callout
+  LogTypeErrorAlarmCALLOUT:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      AlarmName:  !Sub "CALLOUT-${ApplicationName}-LogTypeErrorAlarm"
+      AlarmDescription: "Alarm for log type error metric filter"
+      Namespace: !Ref MetricNamespace
+      Dimensions:
+        - Name: "Application"
+          Value: !Ref ApplicationName
+      MetricName: "LogTypeError"
+      Statistic: "Maximum"
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      Threshold: 1
+      DatapointsToAlarm: 5
+      EvaluationPeriods: 5
+      Period: 60  # 1 minute
+      AlarmActions:
+        - !Ref AlarmSNSTopic
+        - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cosmosIncidentCreation
+
+  # LogTypeErrorAlarm:
+  #   Type: "AWS::CloudWatch::Alarm"
+  #   Properties:
+  #     AlarmName:  !Sub "${ApplicationName}-LogTypeErrorAlarm"
+  #     AlarmDescription: "Alarm for Log type error metric filter"
+  #     Namespace: !Ref MetricNamespace
+  #     MetricName: "LogTypeError"
+  #     Dimensions:
+  #       - Name: "Application"
+  #         Value: !Ref ApplicationName
+  #     Statistic: "Maximum"
+  #     ComparisonOperator: "GreaterThanOrEqualToThreshold"
+  #     Threshold: 1
+  #     DatapointsToAlarm: 5
+  #     EvaluationPeriods: 5
+  #     Period: 60  # 1 minute
+  #     AlarmActions:
+  #       - !Ref AlarmSNSTopic
+
+  # Kafka-Data-Ingestion-Stops Alarm and callout
+  KafkaDataIngestionStopsCALLOUT:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      AlarmName:  !Sub "CALLOUT-${ApplicationName}-KafkaDataIngestionStops-Alarm"
+      AlarmDescription: "Alarm triggers when no records are ingested from Kafka for 2 minutes"
+      Namespace: "AWS/KinesisAnalytics"
+      Dimensions:
+        - Name: "Application"
+          Value: !Ref ApplicationName
+      MetricName: "numRecordsInPerSecond"
+      Statistic: "Maximum"
+      ComparisonOperator: "LessThanOrEqualToThreshold"
+      Threshold: 0
+      DatapointsToAlarm: 5
+      EvaluationPeriods: 5
+      Period: 60  # 1 minute
+      AlarmActions:
+        - !Ref AlarmSNSTopic
+        - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cosmosIncidentCreation
+
+  CommitedOffsetLag:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+        AlarmName: !Sub "CALLOUT-${ApplicationName}-Consumer-Lag-ComittedOffsets-Alarm"
+        ActionsEnabled: true
+        AlarmActions:
+        - !Ref AlarmSNSTopic
+        - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cosmosIncidentCreation
+        MetricName: committedOffsets
+        Namespace: AWS/KinesisAnalytics
+        Statistic: Maximum
+        Dimensions:
+            - Name: Application
+              Value: !Ref ApplicationName
+        Period: 300
+        EvaluationPeriods: 1
+        DatapointsToAlarm: 1
+        Threshold: -1
+        ComparisonOperator: LessThanOrEqualToThreshold
+        TreatMissingData: missing
+
+
+Outputs:
+  SNSAlarmTopicArn:
+    Description: "SNS topic for alarm notifications"
+    Value: !Ref AlarmSNSTopic

@@ -1,0 +1,213 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template to create CloudWatch alarms for ECS service metrics.
+
+Parameters:
+  ClusterName:
+    Description: "The name of the ECS cluster"
+    Type: String
+  ServiceName:
+    Description: "The name of the ECS service"
+    Type: String
+  AlarmSNSTopic:
+    Description: "Existing SNS Topic ARN for alarm notifications"
+    Type: String
+  MetricNamespace:
+    Type: String
+    Description: "Namespace for the metric"
+
+Resources:
+  # ECS CPU Utilization Alarm
+  ECSCPUUtilizationAlarmCALLOUT:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties: 
+      AlarmName: !Sub "CALLOUT-${ServiceName}-CPUUtilization-Alarm"
+      AlarmDescription: "Alarm for CPU Utilization above threshold in ECS Service."
+      MetricName: "CPUUtilization"
+      Namespace: "AWS/ECS"
+      Dimensions:
+        - Name: "ClusterName"
+          Value: !Ref ClusterName
+        - Name: "ServiceName"
+          Value: !Ref ServiceName
+      Statistic: "Average"
+      Period: 300  # 5 minutes
+      EvaluationPeriods: 1
+      Threshold: 90
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      AlarmActions:
+        - !Ref AlarmSNSTopic
+        - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cosmosIncidentCreation
+      Unit: "Percent"
+ 
+  # ECS CPU Utilization Alarm
+  ECSCPUUtilizationAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties: 
+      AlarmName: !Sub "${ServiceName}-CPUUtilization-Alarm"
+      AlarmDescription: "Alarm for CPU Utilization above threshold in ECS Service."
+      MetricName: "CPUUtilization"
+      Namespace: "AWS/ECS"
+      Dimensions:
+        - Name: "ClusterName"
+          Value: !Ref ClusterName
+        - Name: "ServiceName"
+          Value: !Ref ServiceName
+      Statistic: "Average"
+      Period: 300  # 5 minutes
+      EvaluationPeriods: 1
+      Threshold: 75
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      AlarmActions:
+        - !Ref AlarmSNSTopic
+      Unit: "Percent"
+        
+  # ECS Memory Utilization Alarm
+  ECSMemoryUtilizationAlarmCALLOUT:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties: 
+      AlarmName: !Sub "CALLOUT-${ServiceName}-MemoryUtilization-Alarm"
+      AlarmDescription: "Alarm for Memory Utilization above threshold in ECS Service."
+      MetricName: "MemoryUtilization"
+      Namespace: "AWS/ECS"
+      Dimensions:
+        - Name: "ClusterName"
+          Value: !Ref ClusterName
+        - Name: "ServiceName"
+          Value: !Ref ServiceName
+      Statistic: "Average"
+      Period: 300  # 5 minutes
+      EvaluationPeriods: 1
+      Threshold: 90
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      AlarmActions:
+        - !Ref AlarmSNSTopic
+        - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cosmosIncidentCreation
+      Unit: "Percent"
+
+  # ECS Memory Utilization Alarm
+  ECSMemoryUtilizationAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties: 
+      AlarmName: !Sub "${ServiceName}-MemoryUtilization-Alarm"
+      AlarmDescription: "Alarm for Memory Utilization above threshold in ECS Service."
+      MetricName: "MemoryUtilization"
+      Namespace: "AWS/ECS"
+      Dimensions:
+        - Name: "ClusterName"
+          Value: !Ref ClusterName
+        - Name: "ServiceName"
+          Value: !Ref ServiceName
+      Statistic: "Average"
+      Period: 300  # 5 minutes
+      EvaluationPeriods: 1
+      Threshold: 75
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      AlarmActions:
+        - !Ref AlarmSNSTopic
+      Unit: "Percent"
+
+  # ECS Running Task Count Alarm
+  ECSRunningTaskCountAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      AlarmName: !Sub "CALLOUT-${ServiceName}-RunningTaskCount-Alarm"
+      AlarmDescription: "Alarm for running task count below threshold in ECS Service."
+      MetricName: "RunningTaskCount"
+      Namespace: "ECS/ContainerInsights"
+      Dimensions:
+        - Name: "ClusterName"
+          Value: !Ref ClusterName
+        - Name: "ServiceName"
+          Value: !Ref ServiceName
+      Statistic: "Minimum"
+#      Period: 300  # 5 minutes
+#      EvaluationPeriods: 1
+#      Threshold: 1  # Adjust based on expected minimum task count
+      Period: 60  # 5 minutes
+      EvaluationPeriods: 5
+      Threshold: 1  # Adjust based on expected minimum task count
+      DatapointsToAlarm: 5
+      TreatMissingData: "breaching"
+      ComparisonOperator: "LessThanThreshold"
+      AlarmActions:
+        - !Ref AlarmSNSTopic
+        - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cosmosIncidentCreation
+      Unit: "Count"
+
+  # ECS Pending Task Count Alarm
+  ECSPendingTaskCountAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      AlarmName: !Sub "CALLOUT-${ServiceName}-PendingTaskCount-Alarm"
+      AlarmDescription: "Alarm for pending task count above threshold in ECS Service."
+      MetricName: "PendingTaskCount"
+      Namespace: "ECS/ContainerInsights"
+      Dimensions:
+        - Name: "ClusterName"
+          Value: !Ref ClusterName
+        - Name: "ServiceName"
+          Value: !Ref ServiceName
+      Statistic: "Maximum"
+      Period: 300  # 5 minutes
+      EvaluationPeriods: 1
+      Threshold: 5  # Customize based on your application's threshold for pending tasks
+      ComparisonOperator: "GreaterThanThreshold"
+      AlarmActions:
+        - !Ref AlarmSNSTopic
+        - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cosmosIncidentCreation
+      Unit: "Count"
+
+  # Log Type Error Alarm Callout
+  # NOTE: Comment this callout for location-store-service and product-item-service, 
+  #         uncomment for other camel services.
+  LogTypeErrorAlarmCALLOUT:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties: 
+      AlarmName: !Sub "CALLOUT-${ServiceName}-LogTypeError-Alarm"
+      AlarmDescription: "Alarm for log type error above threshold in ECS Service."
+      MetricName: "LogTypeError"
+      Namespace: !Ref MetricNamespace
+      Dimensions:
+        - Name: "ClusterName"
+          Value: !Ref ClusterName
+        - Name: "ServiceName"
+          Value: !Ref ServiceName
+      Statistic: "Maximum"
+      Period: 60  # 1 minute
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 5
+      Threshold: 1
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      AlarmActions:
+        - !Ref AlarmSNSTopic
+        - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cosmosIncidentCreation
+ 
+
+  # Log type error Alarm
+  # LogTypeErrorAlarm:
+  #   Type: "AWS::CloudWatch::Alarm"
+  #   Properties: 
+  #     AlarmName: !Sub "${ServiceName}-LogTypeError-Alarm"
+  #     AlarmDescription: "Alarm for log type error above threshold in ECS Service."
+  #     MetricName: "LogTypeError"
+  #     Namespace: !Ref MetricNamespace
+  #     Dimensions:
+  #       - Name: "ClusterName"
+  #         Value: !Ref ClusterName
+  #       - Name: "ServiceName"
+  #         Value: !Ref ServiceName
+  #     Statistic: "Maximum"
+  #     Period: 60  # 1 minute
+  #     EvaluationPeriods: 5
+  #     DatapointsToAlarm: 5
+  #     Threshold: 1
+  #     ComparisonOperator: "GreaterThanOrEqualToThreshold"
+  #     AlarmActions:
+  #       - !Ref AlarmSNSTopic
+#      Unit: "Percent"
+
+
+Outputs:
+  SNSAlarmTopicArn:
+    Description: "SNS topic for alarm notifications"
+    Value: !Ref AlarmSNSTopic

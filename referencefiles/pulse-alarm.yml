@@ -1,0 +1,39 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template to create CloudWatch alarms for an Apache Flink application in Kinesis Data Analytics.
+
+Parameters:
+  ApplicationName:
+    Description: "The name of the Apache Flink application"
+    Type: String
+  AlarmSNSTopic:
+    Description: "Existing SNS Topic ARN for alarm notifications"
+    Type: String
+  MetricNamespace:
+    Type: String
+    Description: "Namespace for the metric"
+    Default: StorePulse-prod
+
+Resources:
+  MissingPOSPulseAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+        AlarmName: !Sub "CALLOUT-${ApplicationName}-missing-pos-pulse-prod-Alarm"
+        ActionsEnabled: true
+        AlarmActions:
+          - !Ref AlarmSNSTopic
+          - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cosmosIncidentCreation
+        MetricName: MissingPulses
+        Namespace: !Ref MetricNamespace
+        Statistic: Maximum
+        Period: 900
+        EvaluationPeriods: 1
+        DatapointsToAlarm: 1
+        Threshold: 15
+        ComparisonOperator: GreaterThanThreshold
+        TreatMissingData: breaching
+
+
+Outputs:
+  SNSAlarmTopicArn:
+    Description: "SNS topic for alarm notifications"
+    Value: !Ref AlarmSNSTopic
