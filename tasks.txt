@@ -67,6 +67,177 @@ EOD-batch_processed_count
     "period": 3600,
     "stat": "Sum"
 }
+
+
+solutin:
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  CloudWatch Alarms for COSMOS File Transfer Service metrics including WID, EOD, SPR_SKU, and SPR_STORE.
+
+Parameters:
+  StackName:
+    Type: String
+    Description: The name of this stack, used for resource naming.
+    Default: cosmos-file-transfer-alarms
+  SnsTopicImportName:
+    Type: String
+    Description: The name of the SNS Topic to import for notifications.
+    Default: SNS::sns--sss-connect-clusters::Name
+
+Resources:
+  # --- WID Alarm ---
+  # Alarms if the file count is less than 1700 in any 15-minute window.
+  WIDBatchCountAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${StackName}-WID-FileCount-Low"
+      AlarmDescription: "ALARM if the number of WID files processed in a 15-minute period is less than 1700."
+      ActionsEnabled: true
+      OKActions:
+        - Fn::ImportValue: !Ref SnsTopicImportName
+      AlarmActions:
+        - Fn::ImportValue: !Ref SnsTopicImportName
+      MetricName: "batch_processed_count"
+      Namespace: "sc-cosmos-file-transfer-service_prod"
+      Statistic: "Sum"
+      Period: 900 # 15 minutes
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1700
+      ComparisonOperator: "LessThanThreshold"
+      Dimensions:
+        - Name: "TagId"
+          Value: "WID"
+      TreatMissingData: "breaching"
+
+  # --- EOD Alarm ---
+  # Alarms if the total file count over the last 24 hours is less than 1750.
+  # Ops team should check this alarm at 11:30 PM (Mon-Fri, Sun) and 12:30 AM (Sun).
+  EODBatchCountAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${StackName}-EOD-FileCount-Low"
+      AlarmDescription: "ALARM if the total number of EOD files processed in the last 24 hours is less than 1750. Check at specified EOD times."
+      ActionsEnabled: true
+      OKActions:
+        - Fn::ImportValue: !Ref SnsTopicImportName
+      AlarmActions:
+        - Fn::ImportValue: !Ref SnsTopicImportName
+      MetricName: "batch_processed_count"
+      Namespace: "file_transfer_service"
+      Statistic: "Sum"
+      Period: 86400 # 24 hours
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1750
+      ComparisonOperator: "LessThanThreshold"
+      Dimensions:
+        - Name: "TagId"
+          Value: "EOD"
+      TreatMissingData: "breaching"
+
+  # --- SPR by SKU Alarms (Hourly from 12 PM to 6 PM) ---
+  # Alarms if the file count is less than 1 for the specified hour.
+  SPRSKU12PMAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${StackName}-SPR-SKU-FileCount-Low-12PM"
+      AlarmDescription: "ALARM if SPR by SKU file count is < 1 for the 12 PM hour. Check at 1:15 PM."
+      ActionsEnabled: true
+      OKActions:
+        - Fn::ImportValue: !Ref SnsTopicImportName
+      AlarmActions:
+        - Fn::ImportValue: !Ref SnsTopicImportName
+      MetricName: "batch_processed_count"
+      Namespace: "sc-cosmos-file-transfer-service_prod"
+      Statistic: "Sum"
+      Period: 3600 # 1 hour
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: "LessThanThreshold"
+      Dimensions:
+        - Name: "TagId"
+          Value: "SPR_SKU"
+      TreatMissingData: "breaching"
+
+  # ... (Similar alarms for 1 PM, 2 PM, 3 PM, 4 PM, 5 PM) ...
+  # NOTE: For brevity, only the 12 PM and 5 PM alarms are shown. You would copy this block for each hour.
+  SPRSKU5PMAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${StackName}-SPR-SKU-FileCount-Low-5PM"
+      AlarmDescription: "ALARM if SPR by SKU file count is < 1 for the 5 PM hour. Check at 6:15 PM."
+      ActionsEnabled: true
+      OKActions:
+        - Fn::ImportValue: !Ref SnsTopicImportName
+      AlarmActions:
+        - Fn::ImportValue: !Ref SnsTopicImportName
+      MetricName: "batch_processed_count"
+      Namespace: "sc-cosmos-file-transfer-service_prod"
+      Statistic: "Sum"
+      Period: 3600
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: "LessThanThreshold"
+      Dimensions:
+        - Name: "TagId"
+          Value: "SPR_SKU"
+      TreatMissingData: "breaching"
+
+  # --- SPR by Store Alarms (Hourly from 12 PM to 6 PM) ---
+  # Alarms if the file count is less than 1 for the specified hour.
+  SPRStore12PMAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${StackName}-SPR-STORE-FileCount-Low-12PM"
+      AlarmDescription: "ALARM if SPR by Store file count is < 1 for the 12 PM hour. Check at 1:15 PM."
+      ActionsEnabled: true
+      OKActions:
+        - Fn::ImportValue: !Ref SnsTopicImportName
+      AlarmActions:
+        - Fn::ImportValue: !Ref SnsTopicImportName
+      MetricName: "batch_processed_count"
+      Namespace: "sc-cosmos-file-transfer-service_prod"
+      Statistic: "Sum"
+      Period: 3600
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: "LessThanThreshold"
+      Dimensions:
+        - Name: "TagId"
+          Value: "SPR_STORE"
+      TreatMissingData: "breaching"
+
+  # ... (Similar alarms for 1 PM, 2 PM, 3 PM, 4 PM, 5 PM) ...
+  # NOTE: For brevity, only the 12 PM and 5 PM alarms are shown. You would copy this block for each hour.
+  SPRStore5PMAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${StackName}-SPR-STORE-FileCount-Low-5PM"
+      AlarmDescription: "ALARM if SPR by Store file count is < 1 for the 5 PM hour. Check at 6:15 PM."
+      ActionsEnabled: true
+      OKActions:
+        - Fn::ImportValue: !Ref SnsTopicImportName
+      AlarmActions:
+        - Fn::ImportValue: !Ref SnsTopicImportName
+      MetricName: "batch_processed_count"
+      Namespace: "sc-cosmos-file-transfer-service_prod"
+      Statistic: "Sum"
+      Period: 3600
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: "LessThanThreshold"
+      Dimensions:
+        - Name: "TagId"
+          Value: "SPR_STORE"
+      TreatMissingData: "breaching"
+
+
 ------------
 on 24th July 07:30, Observed Sales transactions, pulse messages etc., messages were not flowing into the replicated topics with in the SC cluster. After posting the issue in Cloud Engineering channel the issue got resolved. 
 
