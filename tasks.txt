@@ -1,3 +1,22 @@
+File Transfer service alert setup
+
+Description
+
+setup callout mechanisms for the File Transfer service.
+WID - every 15 minutes should send 1750+ files. 
+
+for example if we take a WID window of 10:00 - 10:15, by 10:25 we should send the files. callout should happen if we dont see send the files by 10:25.  
+
+WID Threshold - 1700
+
+EOD - every day in 24 hours we should send 1750+ files. For example - from Mon to Friday and Sunday, by 11.30 PM if we did not send the files then callout should trigger. and on Sunday 12.30 AM should trigger the callout. EOD Threshold - 1750
+
+SPR by Store and SPR by SKU - everyday from 12 PM to 6 PM we should send 1 file each for every hour. SPR Store & SPR SKU threshold - 1 file
+
+example - for 12 PM file  - if file not sent by 12:15 PM trigger callout. same applies until 6 PM file
+
+
+------------
 on 24th July 07:30, Observed Sales transactions, pulse messages etc., messages were not flowing into the replicated topics with in the SC cluster. After posting the issue in Cloud Engineering channel the issue got resolved. 
 
 Please do analysis on how the issue resolved ? what changes are made ? this could be a potential risk for prod environment.
