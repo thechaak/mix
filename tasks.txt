@@ -1,3 +1,6 @@
+
+
+
 File Transfer service alert setup
 
 Description
@@ -70,6 +73,145 @@ EOD-batch_processed_count
 
 
 solutin:
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates a standalone SNS Topic for alarms and notifications.
+
+Parameters:
+  CostcentreTag:
+    Type: String
+    Default: PD7563
+  EnvironmentTag:
+    Type: String
+    Default: nonprod
+  LiveTag:
+    Type: String
+    Default: 'no'
+  OwnerTag:
+    Type: String
+    Default: supply-chain
+  ProjectTag:
+    Type: String
+    Default: sss
+
+Resources:
+  AlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Tags:
+        - Key: costcentre
+          Value: !Ref CostcentreTag
+        - Key: environment
+          Value: !Ref EnvironmentTag
+        - Key: live
+          Value: !Ref LiveTag
+        - Key: owner
+          Value: !Ref OwnerTag
+        - Key: project
+          Value: !Ref ProjectTag
+
+Outputs:
+  AlarmTopicArn:
+    Description: "ARN of the newly created SNS topic for alarms"
+    Value: !Ref AlarmTopic
+    Export:
+      Name: !Sub "${AWS::StackName}-AlarmTopicArn"
+_________________
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Slack Integration For a specific SNS Topic.
+
+Parameters:
+  SnsTopicArn:
+    Type: String
+    Description: "The ARN of the SNS topic to forward to Slack."
+  SlackChannelIdParam:
+    Type: String
+    Description: "The ID of the Slack channel."
+    Default: C099CF86L3U
+  SlackWorkspaceIdParam:
+    Type: String
+    Description: "The ID of the Slack workspace authorized with AWS Chatbot."
+    Default: TP8TW8VTJ
+  ConfigurationNameParam:
+    Type: String
+    Description: "A unique name for the AWS Chatbot configuration."
+    Default: sc-sss-nonprod-notifications
+  IamBoundaryPolicyName:
+    Type: String
+    Default: ccoe/js-developer
+  # ... (other tag parameters remain the same) ...
+  CostcentreTag:
+    Type: String
+    Default: PD7563
+  EnvironmentTag:
+    Type: String
+    Default: nonprod
+  OwnerTag:
+    Type: String
+    Default: supply-chain
+  ProjectTag:
+    Type: String
+    Default: sss
+  LiveTag:
+    Type: String
+    Default: 'no'
+
+Resources:
+  ReadOnlyRoleForChatBot:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: "IAM Role for AWS Chatbot to read alarms and logs for Slack."
+      PermissionsBoundary: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/${IamBoundaryPolicyName}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: chatbot.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ReadOnlyPolicyForChatBot
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ReadOnlyForChatBot
+                Effect: Allow
+                Action:
+                  - cloudwatch:Describe*
+                  - cloudwatch:Get*
+                  - cloudwatch:List*
+                  - logs:Get*
+                  - logs:List*
+                  - logs:Describe*
+                  - sns:Get*
+                  - sns:List*
+                Resource: '*'
+      Tags:
+        - Key: costcentre
+          Value: !Ref CostcentreTag
+        - Key: environment
+          Value: !Ref EnvironmentTag
+        - Key: live
+          Value: !Ref LiveTag
+        - Key: owner
+          Value: !Ref OwnerTag
+        - Key: project
+          Value: !Ref ProjectTag
+
+  SlackIntegration:
+    Type: AWS::Chatbot::SlackChannelConfiguration
+    Properties:
+      ConfigurationName: !Ref ConfigurationNameParam
+      IamRoleArn: !GetAtt ReadOnlyRoleForChatBot.Arn
+      SlackChannelId: !Ref SlackChannelIdParam
+      SlackWorkspaceId: !Ref SlackWorkspaceIdParam
+      SnsTopicArns:
+        - !Ref SnsTopicArn
+
+
+---
+
 
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
