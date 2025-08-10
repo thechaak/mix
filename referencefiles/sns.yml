@@ -1,0 +1,75 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: DB outputter and queue length alarms.
+Parameters:
+  ContactEmail:
+    AllowedPattern: '[\x20-\x7E]+'
+    ConstraintDescription: Must be ASCII
+    MaxLength: 128
+    MinLength: 2
+    Type: String
+    Default: iss.cloudengineering@sainsburys.co.uk
+  CostcentreTag:
+    AllowedPattern: '[\x20-\x7E]+'
+    ConstraintDescription: Must be ASCII
+    MaxLength: 128
+    MinLength: 2
+    Type: String
+    Default: PD7563
+  EnvironmentTag:
+    AllowedPattern: '[\x20-\x7E]+'
+    ConstraintDescription: Must be ASCII
+    Default: nonprod
+    MaxLength: 128
+    MinLength: 2
+    Type: String
+  LiveTag:
+    AllowedPattern: '[\x20-\x7E]+'
+    ConstraintDescription: Must be ASCII
+    Default: 'no'
+    MaxLength: 128
+    MinLength: 2
+    Type: String
+  OwnerTag:
+    AllowedPattern: '[\x20-\x7E]+'
+    ConstraintDescription: Must be ASCII
+    Default: supply-chain
+    MaxLength: 128
+    MinLength: 2
+    Type: String
+  ProjectTag:
+    AllowedPattern: '[\x20-\x7E]+'
+    ConstraintDescription: Must be ASCII
+    MaxLength: 128
+    MinLength: 2
+    Type: String
+    Default: sss
+  IamBoundaryPolicyName:
+    Type: String
+    Default: ccoe/js-developer
+    AllowedPattern: '[a-zA-Z0-9-\/.]+'
+  StackName:
+    Type: String
+Resources:
+  AlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Protocol: email
+          Endpoint:
+            Ref: ContactEmail
+      Tags:
+        - Key: costcentre
+          Value:
+            Ref: CostcentreTag
+        - Key: environment
+          Value:
+            Ref: EnvironmentTag
+        - Key: live
+          Value:
+            Ref: LiveTag
+        - Key: owner
+          Value:
+            Ref: OwnerTag
+        - Key: project
+          Value:
+            Ref: ProjectTag
