@@ -1,4 +1,568 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Pipeline to deploy the Kafka connectors to Connect Cluster in dev, stg and prod environments.
 
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Connector Repository settings
+        Parameters:
+          - ConnectorConfigRepositoryName
+          - ConnectorConfigBranchName
+      - Label:
+          default: Connector Codebuild Project names
+        Parameters:
+          - DevProjectName
+          - StgProjectName
+          - ProdProjectName
+      - Label:
+          default: Build Compute Settings
+        Parameters:
+          - BuildComputeConfiguration
+          - Environment
+      - Label:
+          default: Mandatory tags.
+        Parameters:
+          - CostcentreTag
+          - ProjectTag
+          - LiveTag
+      - Label:
+          - default: Project tags
+        Parameters:
+          - EnvironmentTag
+          - OwnerTag
+      - Label:
+          default: IAM Settings. Defined by CE team.
+        Parameters:
+          - NonProdAccountPipelineRoleArn
+          - ProdAccountPipelineRoleArn
+          - IamBoundaryPolicyName
+      - Label:
+          default: Connector Details
+        Parameters:
+          - DevDatabaseSecretName
+          - StgDatabaseSecretName
+          - ProdDatabaseSecretName
+      - Label:
+          default: KafkaSecret Details
+        Parameters:
+          - KafkaSecretNameDev
+          - KafkaSecretNameStg
+          - KafkaSecretNameProd
+      - Label:
+          default: Destination Topics for Connector
+        Parameters:
+          - NonprodDestTopic
+          - ProdDestTopic
+    ParameterLabels:
+      - ArtifactsBucketName:
+          default: Bucket storing the CodeBuild and CodePipeline artifacts
+      - CloudformationTemplatesBucketName:
+          default: Bucket storing the CloudFormation templates and configurations generated
+      - NonProdAccountPipelineRoleArn:
+          default: SSM Path to the NonProd CodePipeline Role ARN
+      - ProdAccountPipelineRoleArn:
+          default: SSM Path to the Prod CodePipeline Role ARN
+
+Parameters:
+
+  ConnectionId:
+    Type: String
+    Description: The Codepipeline Connection ID
+
+  NonProdAccountCfnRoleArn:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /cicd/shared/accounts/nonprod/cloudformation/role/arn
+
+  NonProdAccountPipelineRoleArn:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /cicd/shared/accounts/nonprod/codepipeline/role/arn
+
+  ProdAccountCfnRoleArn:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /cicd/shared/accounts/prod/cloudformation/role/arn
+
+  ProdAccountPipelineRoleArn:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /cicd/shared/accounts/prod/codepipeline/role/arn
+
+  BuildspecFilePath:
+    Type: String
+
+  ConnectorConfigRepositoryName:
+    Type: String
+
+  ConnectorConfigBranchName:
+    Type: String
+    Default: main
+
+  DevClusterUrl:
+    Type: String
+
+  StgClusterUrl:
+    Type: String
+
+  ProdClusterUrl:
+    Type: String
+
+  DevProjectName:
+    Type: String
+
+  StgProjectName:
+    Type: String
+
+  ProdProjectName:
+    Type: String
+
+  DevDatabaseSecretName:
+    Type: String
+
+  StgDatabaseSecretName:
+    Type: String
+
+  ProdDatabaseSecretName:
+    Type: String
+
+  KafkaSecretNameDev:
+    Type: String
+
+  KafkaSecretNameStg:
+    Type: String
+
+  KafkaSecretNameProd:
+    Type: String
+
+  NonprodDestTopic:
+    Type: String
+
+  ProdDestTopic:
+    Type: String
+
+  ConnectorName:
+    Type: String
+    AllowedPattern: "^[a-zA-Z0-9-.]+$"
+
+  DeployToProd:
+    Type: String
+    AllowedValues:
+      - True
+      - False
+    Default: False
+
+  # NonProdAccountPipelineRoleArn:
+  #   Type: AWS::SSM::Parameter::Value<String>
+  #   Default: /cicd/shared/accounts/nonprod/codepipeline/role/arn
+
+  # ProdAccountPipelineRoleArn:
+  #   Type: AWS::SSM::Parameter::Value<String>
+  #   Default: /cicd/shared/accounts/prod/codepipeline/role/arn
+
+  IamBoundaryPolicyName:
+    Type: String
+    Default: ccoe/js-developer
+    AllowedPattern: '[a-zA-Z0-9-\/.]+'
+
+  GithubOrganization:
+    Type: String
+    AllowedValues:
+      - sainsburys-tech
+    Default: sainsburys-tech
+
+  BuildComputeConfiguration:
+    Type: String
+    Default: Small
+    AllowedValues:
+      - Small
+      - Medium
+      - Large
+
+  # Defaulting to 5.0 for OpenJDK 11 which is vastly the majority.
+  Environment:
+    Type: String
+    Default: aws/codebuild/standard:5.0
+    AllowedValues:
+      - aws/codebuild/standard:5.0
+      - aws/codebuild/standard:4.0
+
+  CostcentreTag:
+    AllowedPattern: '[\x20-\x7E]+'
+    ConstraintDescription: Must be ASCII
+    MaxLength: 128
+    MinLength: 2
+    Type: String
+  EnvironmentTag:
+    AllowedPattern: '[\x20-\x7E]+'
+    ConstraintDescription: Must be ASCII
+    MaxLength: 128
+    MinLength: 2
+    Type: String
+    AllowedValues:
+      - mgmt
+      - dev
+      - prod
+      - stg
+    Default: mgmt
+  OwnerTag:
+    AllowedPattern: '[\x20-\x7E]+'
+    ConstraintDescription: Must be ASCII
+    MaxLength: 128
+    MinLength: 2
+    Type: String
+    Default: supply-chain
+  ProjectTag:
+    AllowedPattern: '[\x20-\x7E]+'
+    ConstraintDescription: Must be ASCII
+    MaxLength: 128
+    MinLength: 2
+    Type: String
+  LiveTag:
+    Type: String
+    AllowedValues:
+      - "yes"
+      - "no"
+    Default: "no"
+
+Mappings:
+  CodeBuild:
+    EnvironmentSize:
+      Small: BUILD_GENERAL1_SMALL
+      Medium: BUILD_GENERAL1_MEDIUM
+      Large: BUILD_GENERAL1_LARGE
+
+Conditions:
+  DeployToProdCondition: !Equals
+    - !Ref DeployToProd
+    - True
+
+Resources:
+  KmsKeyAccessPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: 'CicdKmsKeyAccess'
+      Roles:
+        - !Ref CodePipelineRole
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: DecryptEncryptArtifacts
+            Effect: Allow
+            Action:
+              - kms:DescribeKey
+              - kms:GenerateDataKey*
+              - kms:Encrypt
+              - kms:ReEncrypt*
+              - kms:Decrypt
+            Resource:
+              - !ImportValue "CICD::mgmt::KMS::Key::Arn"
+
+  S3BucketsReadAccess:
+    Type: AWS::IAM::Policy
+    Properties:
+      Roles:
+        - !Ref CodePipelineRole
+      PolicyName: S3CicdBucketsReadAccess
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowRwToArtifactsBucket
+            Action:
+              - s3:ListBucket
+              - s3:GetBucket*
+            Effect: Allow
+            Resource:
+              - !ImportValue "CICD::mgmt::Bucket::Artifacts::Arn"
+              - !ImportValue "CICD::mgmt::Bucket::CfnTemplates::Arn"
+          - Sid: GetCloudformationTemplates
+            Action:
+              - s3:GetObject*
+              - s3:ListBucket
+              - s3:GetBucket*
+              - s3:PutObject*
+            Effect: Allow
+            Resource:
+              - Fn::Sub:
+                  - '${ArtifactsBucketArn}/*'
+                  - ArtifactsBucketArn: !ImportValue "CICD::mgmt::Bucket::Artifacts::Arn"
+              - Fn::Sub:
+                  - '${CloudformationTemplatesBucketArn}/*'
+                  - CloudformationTemplatesBucketArn: !ImportValue "CICD::mgmt::Bucket::CfnTemplates::Arn"
+
+  CodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      PermissionsBoundary: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/${IamBoundaryPolicyName}'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - !Sub 'codepipeline.${AWS::URLSuffix}'
+            Condition:
+              Bool:
+                aws:SecureTransport: true
+      Policies:
+        - PolicyName: CrossAccountAssume
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sts:AssumeRole
+                Resource:
+                  - !Ref ProdAccountPipelineRoleArn
+                  - !Ref NonProdAccountPipelineRoleArn
+                Condition:
+                  Bool:
+                    aws:SecureTransport: true
+        - PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StartBuild
+                  - codebuild:Get*
+                  - codebuild:Describe*
+                Effect: Allow
+                Resource: '*'
+          PolicyName: CodeBuildAccess
+        - PolicyName: SNSPublish
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource:
+                  - !Ref PipelineNotifications
+      Tags:
+        - Key: costcentre
+          Value: !Ref 'CostcentreTag'
+        - Key: environment
+          Value: !Ref 'EnvironmentTag'
+        - Key: owner
+          Value: !Ref 'OwnerTag'
+        - Key: project
+          Value: !Ref 'ProjectTag'
+        - Key: live
+          Value: !Ref 'LiveTag'
+
+  PipelineNotifications:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: !Sub '${AWS::StackName}PipelineTopic'
+      Tags:
+        - Key: costcentre
+          Value: !Ref 'CostcentreTag'
+        - Key: environment
+          Value: !Ref 'EnvironmentTag'
+        - Key: owner
+          Value: !Ref 'OwnerTag'
+        - Key: project
+          Value: !Ref 'ProjectTag'
+        - Key: live
+          Value: !Ref 'LiveTag'
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Id: CodeStarAccess
+        Version: 2012-10-17
+        Statement:
+          - Sid: __default_statement_ID
+            Effect: Allow
+            Action:
+              - "SNS:GetTopicAttributes"
+              - "SNS:SetTopicAttributes"
+              - "SNS:AddPermission"
+              - "SNS:RemovePermission"
+              - "SNS:DeleteTopic"
+              - "SNS:Subscribe"
+              - "SNS:ListSubscriptionsByTopic"
+              - "SNS:Publish"
+              - "SNS:Receive"
+            Resource: !Ref PipelineNotifications
+            Principal:
+              AWS: !Ref "AWS::AccountId"
+            Condition:
+              StringEquals:
+                AWS:SourceOwner: !Ref "AWS::AccountId"
+          - Sid: AccessForCodeStarNotifications
+            Effect: Allow
+            Action:
+              - SNS:Publish
+            Principal:
+              Service:
+                !Sub 'codestar-notifications.${AWS::URLSuffix}'
+            Resource: !Ref PipelineNotifications
+      Topics:
+        - !Ref PipelineNotifications
+
+  ReleasePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    DependsOn:
+      - S3BucketsReadAccess
+      - KmsKeyAccessPolicy
+      - CodePipelineRole
+    Properties:
+      Tags:
+        - Key: costcentre
+          Value: !Ref 'CostcentreTag'
+        - Key: environment
+          Value: !Ref 'EnvironmentTag'
+        - Key: owner
+          Value: !Ref 'OwnerTag'
+        - Key: project
+          Value: !Ref 'ProjectTag'
+        - Key: live
+          Value: !Ref 'LiveTag'
+      ArtifactStore:
+        Location: !ImportValue "CICD::mgmt::Bucket::Artifacts::Name"
+        EncryptionKey:
+          Id: !ImportValue "CICD::mgmt::KMS::Key::Arn"
+          Type: KMS
+        Type: S3
+      RestartExecutionOnUpdate: false
+      RoleArn: !GetAtt 'CodePipelineRole.Arn'
+      Stages:
+        - Name: PipelineSource
+          Actions:
+            - Name: ApplicationSourceCode
+              ActionTypeId:
+                Version: '1'
+                Owner: AWS
+                Category: Source
+                Provider: CodeStarSourceConnection
+              Configuration:
+                ConnectionArn: !Ref ConnectionId
+                FullRepositoryId: !Sub "${GithubOrganization}/${ConnectorConfigRepositoryName}"
+                BranchName: !Ref ConnectorConfigBranchName
+                OutputArtifactFormat: "CODE_ZIP"
+              OutputArtifacts:
+                - Name: ConnectorSourceCode
+              RunOrder: '1'
+        - Name: !Sub 'DeployToDev'
+          Actions:
+            - Name: Connector
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref DevProjectName
+                BuildspecOverride: !Ref BuildspecFilePath
+                PrimarySource: ConnectorSourceCode
+                EnvironmentVariables: !Sub |
+                  [
+                    {"name": "CONNECTOR_DETAILS", "type": "PLAINTEXT", "value": "${DevDatabaseSecretName}"},
+                    {"name": "KAFKA_SECRETS_NAME", "type": "PLAINTEXT", "value": "${KafkaSecretNameDev}"},
+                    {"name": "CONNECTOR_NAME", "type": "PLAINTEXT", "value": "${ConnectorName}"},
+                    {"name": "OPERATION_CODE", "type": "PLAINTEXT", "value": "CREATE"},
+                    {"name": "CONNECT_CLUSTER_URL", "type": "PLAINTEXT", "value": "${DevClusterUrl}"},
+                    {"name": "TOPIC_NAME", "type": "PLAINTEXT", "value": "${NonprodDestTopic}"}
+                  ]
+              InputArtifacts:
+                - Name: ConnectorSourceCode
+              RunOrder: '2'
+              RoleArn: !Ref NonProdAccountPipelineRoleArn
+        - Name: !Sub 'DeployToStg'
+          Actions:
+            - Name: RequestApproval
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Provider: Manual
+                Version: '1'
+              Configuration:
+                NotificationArn: !Ref 'PipelineNotifications'
+              RunOrder: '1'
+            - Name: Connector
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref StgProjectName
+                BuildspecOverride: !Ref BuildspecFilePath
+                PrimarySource: ConnectorSourceCode
+                EnvironmentVariables: !Sub |
+                  [
+                    {"name": "CONNECTOR_DETAILS", "type": "PLAINTEXT", "value": "${StgDatabaseSecretName}"},
+                    {"name": "KAFKA_SECRETS_NAME", "type": "PLAINTEXT", "value": "${KafkaSecretNameStg}"},
+                    {"name": "CONNECTOR_NAME", "type": "PLAINTEXT", "value": "${ConnectorName}"},
+                    {"name": "OPERATION_CODE", "type": "PLAINTEXT", "value": "CREATE"},
+                    {"name": "CONNECT_CLUSTER_URL", "type": "PLAINTEXT", "value": "${StgClusterUrl}"},
+                    {"name": "TOPIC_NAME", "type": "PLAINTEXT", "value": "${NonprodDestTopic}"}
+
+                  ]
+              InputArtifacts:
+                - Name: ConnectorSourceCode
+              RunOrder: '2'
+              RoleArn: !Ref NonProdAccountPipelineRoleArn
+        - Fn::If:
+            - DeployToProdCondition
+            - Name: !Sub 'DeployToProd'
+              Actions:
+                - Name: RequestApproval
+                  ActionTypeId:
+                    Category: Approval
+                    Owner: AWS
+                    Provider: Manual
+                    Version: '1'
+                  Configuration:
+                    NotificationArn: !Ref 'PipelineNotifications'
+                  RunOrder: '1'
+                - Name: Connector
+                  ActionTypeId:
+                    Category: Build
+                    Owner: AWS
+                    Provider: CodeBuild
+                    Version: '1'
+                  Configuration:
+                    ProjectName: !Ref ProdProjectName
+                    BuildspecOverride: !Ref BuildspecFilePath
+                    PrimarySource: ConnectorSourceCode
+                    EnvironmentVariables: !Sub |
+                      [
+                        {"name": "CONNECTOR_DETAILS", "type": "PLAINTEXT", "value": "${ProdDatabaseSecretName}"},
+                        {"name": "KAFKA_SECRETS_NAME", "type": "PLAINTEXT", "value": "${KafkaSecretNameProd}"},
+                        {"name": "CONNECTOR_NAME", "type": "PLAINTEXT", "value": "${ConnectorName}"},
+                        {"name": "OPERATION_CODE", "type": "PLAINTEXT", "value": "CREATE"},
+                        {"name": "CONNECT_CLUSTER_URL", "type": "PLAINTEXT", "value": "${ProdClusterUrl}"},
+                        {"name": "TOPIC_NAME", "type": "PLAINTEXT", "value": "${ProdDestTopic}"}
+
+                       ]
+                  InputArtifacts:
+                    - Name: ConnectorSourceCode
+                  RunOrder: '2'
+                  RoleArn: !Ref ProdAccountPipelineRoleArn
+            - !Ref "AWS::NoValue"
+
+  CodeStarAccess:
+    Type: AWS::IAM::Policy
+    Properties:
+      Roles:
+        - !Ref CodePipelineRole
+      PolicyName: CodeStarAccess
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: CodeStarAccess
+            Effect: Allow
+            Resource:
+              - !Ref ConnectionId
+            Action:
+              - codestar-connections:UseConnection
+
+
+----
 
 
 File Transfer service alert setup
