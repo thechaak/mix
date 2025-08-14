@@ -84,6 +84,22 @@ Parameters:
     Type: String
     Description: "The full ARN of the SNS Topic for alarm notifications."
     Default: "arn:aws:sns:eu-west-1:724024947236:preprod-slack-sns-topic-stack-AlarmTopic-eBaMV8UzRGTw"
+  PrimaryNamespace:
+    Type: String
+    Description: "The CloudWatch namespace for WID and SPR metrics."
+    Default: "sc-cosmos-file-transfer-service_preprod"
+  EodNamespace:
+    Type: String
+    Description: "The CloudWatch namespace for the EOD metric."
+    Default: "file_transfer_service"
+  SharedMetricName:
+    Type: String
+    Description: "The name of the metric to monitor (e.g., batch_processed_count)."
+    Default: "batch_processed_count"
+  IamBoundaryPolicyName:
+    Type: String
+    Description: "The name of the IAM Permissions Boundary policy to apply to the role."
+    Default: "ccoe/js-developer"
 
 Resources:
   #---------------------------------------------------#
@@ -98,6 +114,7 @@ Resources:
           - Effect: Allow
             Principal: { Service: lambda.amazonaws.com }
             Action: sts:AssumeRole
+      PermissionsBoundary: !Sub "arn:aws:iam::${AWS::AccountId}:policy/${IamBoundaryPolicyName}"
       Policies:
         - PolicyName: LambdaMonitoringPolicy
           PolicyDocument:
@@ -121,6 +138,7 @@ Resources:
   #--------------------------------------------------------------------#
   FrequentMonitorLambda:
     Type: AWS::Lambda::Function
+    DependsOn: MonitoringLambdaRole
     Properties:
       FunctionName: cosmos-frequent-file-monitor
       Handler: index.lambda_handler
@@ -130,6 +148,8 @@ Resources:
       Environment:
         Variables:
           SNS_TOPIC_ARN: !Ref AlarmSnsTopicArn
+          PRIMARY_NAMESPACE: !Ref PrimaryNamespace
+          METRIC_NAME: !Ref SharedMetricName
       Code:
         ZipFile: |
           import boto3
@@ -137,22 +157,13 @@ Resources:
           from datetime import datetime, timedelta, timezone
 
           SNS_TOPIC_ARN = os.environ['SNS_TOPIC_ARN']
+          PRIMARY_NAMESPACE = os.environ['PRIMARY_NAMESPACE']
+          METRIC_NAME = os.environ['METRIC_NAME']
+          
           CHECKS_CONFIG = {
-              'WID': {
-                  'namespace': 'sc-cosmos-file-transfer-service_prod', 'metric_name': 'batch_processed_count',
-                  'dimension': {'Name': 'TagId', 'Value': 'WID'}, 'threshold': 1700,
-                  'period': 900, 'check_window_utc': None
-              },
-              'SPR_SKU': {
-                  'namespace': 'sc-cosmos-file-transfer-service_prod', 'metric_name': 'batch_processed_count',
-                  'dimension': {'Name': 'TagId', 'Value': 'SPR_SKU'}, 'threshold': 1,
-                  'period': 900, 'check_window_utc': (11, 18) # 12:00 PM to 6:59 PM BST is 11:00 to 17:59 UTC
-              },
-              'SPR_STORE': {
-                  'namespace': 'sc-cosmos-file-transfer-service_prod', 'metric_name': 'batch_processed_count',
-                  'dimension': {'Name': 'TagId', 'Value': 'SPR_STORE'}, 'threshold': 1,
-                  'period': 900, 'check_window_utc': (11, 18)
-              }
+              'WID': { 'threshold': 1700, 'period': 900, 'dimension': {'Name': 'TagId', 'Value': 'WID'}, 'check_window_utc': None },
+              'SPR_SKU': { 'threshold': 1, 'period': 900, 'dimension': {'Name': 'TagId', 'Value': 'SPR_SKU'}, 'check_window_utc': (11, 18) },
+              'SPR_STORE': { 'threshold': 1, 'period': 900, 'dimension': {'Name': 'TagId', 'Value': 'SPR_STORE'}, 'check_window_utc': (11, 18) }
           }
           cloudwatch = boto3.client('cloudwatch')
           sns = boto3.client('sns')
@@ -178,11 +189,8 @@ Resources:
                   MetricDataQueries=[{
                       'Id': 'm1',
                       'MetricStat': {
-                          'Metric': {
-                              'Namespace': config['namespace'], 'MetricName': config['metric_name'],
-                              'Dimensions': [config['dimension']]
-                          },
-                          'Period': config['period'], 'Stat': 'Sum',
+                          'Metric': { 'Namespace': PRIMARY_NAMESPACE, 'MetricName': METRIC_NAME, 'Dimensions': [config['dimension']] },
+                          'Period': config['period'], 'Stat': 'Sum'
                       }, 'ReturnData': True,
                   }],
                   StartTime=now_utc - timedelta(seconds=config['period']), EndTime=now_utc
@@ -228,6 +236,7 @@ Resources:
   #-------------------------------------------------------------#
   EodMonitorLambda:
     Type: AWS::Lambda::Function
+    DependsOn: MonitoringLambdaRole
     Properties:
       FunctionName: cosmos-eod-file-monitor
       Handler: index.lambda_handler
@@ -237,6 +246,8 @@ Resources:
       Environment:
         Variables:
           SNS_TOPIC_ARN: !Ref AlarmSnsTopicArn
+          EOD_NAMESPACE: !Ref EodNamespace
+          METRIC_NAME: !Ref SharedMetricName
       Code:
         ZipFile: |
           import boto3
@@ -244,11 +255,10 @@ Resources:
           from datetime import datetime, timedelta, timezone
 
           SNS_TOPIC_ARN = os.environ['SNS_TOPIC_ARN']
-          EOD_CONFIG = {
-              'namespace': 'file_transfer_service', 'metric_name': 'batch_processed_count',
-              'dimension': {'Name': 'TagId', 'Value': 'EOD'}, 'threshold': 1750,
-              'period': 86400 # 24 hours
-          }
+          EOD_NAMESPACE = os.environ['EOD_NAMESPACE']
+          METRIC_NAME = os.environ['METRIC_NAME']
+
+          EOD_CONFIG = { 'dimension': {'Name': 'TagId', 'Value': 'EOD'}, 'threshold': 1750, 'period': 86400 }
           cloudwatch = boto3.client('cloudwatch')
           sns = boto3.client('sns')
 
@@ -260,11 +270,8 @@ Resources:
                   MetricDataQueries=[{
                       'Id': 'm1',
                       'MetricStat': {
-                          'Metric': {
-                              'Namespace': EOD_CONFIG['namespace'], 'MetricName': EOD_CONFIG['metric_name'],
-                              'Dimensions': [EOD_CONFIG['dimension']]
-                          },
-                          'Period': EOD_CONFIG['period'], 'Stat': 'Sum',
+                          'Metric': { 'Namespace': EOD_NAMESPACE, 'MetricName': METRIC_NAME, 'Dimensions': [EOD_CONFIG['dimension']] },
+                          'Period': EOD_CONFIG['period'], 'Stat': 'Sum'
                       }, 'ReturnData': True,
                   }],
                   StartTime=now_utc - timedelta(seconds=EOD_CONFIG['period']), EndTime=now_utc
