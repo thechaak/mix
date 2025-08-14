@@ -73,7 +73,253 @@ EOD-batch_processed_count
 
 
 solutin:
+*************************
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  A robust monitoring solution using EventBridge and Lambda for COSMOS File Transfer Service.
+  Handles WID, SPR (time-windowed), and EOD checks with precise, automated logic.
 
+Parameters:
+  AlarmSnsTopicArn:
+    Type: String
+    Description: "The full ARN of the SNS Topic for alarm notifications."
+    Default: "arn:aws:sns:eu-west-1:724024947236:preprod-slack-sns-topic-stack-AlarmTopic-eBaMV8UzRGTw"
+
+Resources:
+  #---------------------------------------------------#
+  # --- IAM Role (Shared by both Lambda functions) ---
+  #---------------------------------------------------#
+  MonitoringLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaMonitoringPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"
+              - Effect: Allow
+                Action: cloudwatch:GetMetricData
+                Resource: "*"
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref AlarmSnsTopicArn
+
+  #--------------------------------------------------------------------#
+  # --- Monitor 1: Frequent Checks for WID & SPR (Every 15 mins) ---
+  #--------------------------------------------------------------------#
+  FrequentMonitorLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: cosmos-frequent-file-monitor
+      Handler: index.lambda_handler
+      Runtime: python3.12
+      Role: !GetAtt MonitoringLambdaRole.Arn
+      Timeout: 60
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref AlarmSnsTopicArn
+      Code:
+        ZipFile: |
+          import boto3
+          import os
+          from datetime import datetime, timedelta, timezone
+
+          SNS_TOPIC_ARN = os.environ['SNS_TOPIC_ARN']
+          CHECKS_CONFIG = {
+              'WID': {
+                  'namespace': 'sc-cosmos-file-transfer-service_prod', 'metric_name': 'batch_processed_count',
+                  'dimension': {'Name': 'TagId', 'Value': 'WID'}, 'threshold': 1700,
+                  'period': 900, 'check_window_utc': None
+              },
+              'SPR_SKU': {
+                  'namespace': 'sc-cosmos-file-transfer-service_prod', 'metric_name': 'batch_processed_count',
+                  'dimension': {'Name': 'TagId', 'Value': 'SPR_SKU'}, 'threshold': 1,
+                  'period': 900, 'check_window_utc': (11, 18) # 12:00 PM to 6:59 PM BST is 11:00 to 17:59 UTC
+              },
+              'SPR_STORE': {
+                  'namespace': 'sc-cosmos-file-transfer-service_prod', 'metric_name': 'batch_processed_count',
+                  'dimension': {'Name': 'TagId', 'Value': 'SPR_STORE'}, 'threshold': 1,
+                  'period': 900, 'check_window_utc': (11, 18)
+              }
+          }
+          cloudwatch = boto3.client('cloudwatch')
+          sns = boto3.client('sns')
+
+          def lambda_handler(event, context):
+              now_utc = datetime.now(timezone.utc)
+              print(f"Running frequent checks at {now_utc.isoformat()}")
+
+              for name, config in CHECKS_CONFIG.items():
+                  if config['check_window_utc']:
+                      start_hour, end_hour = config['check_window_utc']
+                      if not (start_hour <= now_utc.hour < end_hour):
+                          print(f"Skipping '{name}' check outside of its active window.")
+                          continue
+                  
+                  print(f"Performing check for '{name}'...")
+                  process_check(name, config, now_utc)
+              
+              return {'statusCode': 200, 'body': 'Checks complete.'}
+
+          def process_check(name, config, now_utc):
+              response = cloudwatch.get_metric_data(
+                  MetricDataQueries=[{
+                      'Id': 'm1',
+                      'MetricStat': {
+                          'Metric': {
+                              'Namespace': config['namespace'], 'MetricName': config['metric_name'],
+                              'Dimensions': [config['dimension']]
+                          },
+                          'Period': config['period'], 'Stat': 'Sum',
+                      }, 'ReturnData': True,
+                  }],
+                  StartTime=now_utc - timedelta(seconds=config['period']), EndTime=now_utc
+              )
+              
+              values = response['MetricDataResults'][0]['Values']
+              
+              if not values:
+                  message = f"ALERT: Service Stalled! No '{name}' data received in the last {config['period'] // 60} minutes."
+                  subject = f"COSMOS ALARM: {name} Stalled"
+                  print(message)
+                  sns.publish(TopicArn=SNS_TOPIC_ARN, Subject=subject, Message=message)
+              else:
+                  latest_value = values[0]
+                  if latest_value < config['threshold']:
+                      message = f"ALERT: Low Throughput! '{name}' file count was {int(latest_value)}, which is below the threshold of {config['threshold']}."
+                      subject = f"COSMOS ALARM: {name} Low Count"
+                      print(message)
+                      sns.publish(TopicArn=SNS_TOPIC_ARN, Subject=subject, Message=message)
+                  else:
+                      print(f"OK: '{name}' count was {int(latest_value)}, which is at or above the threshold.")
+
+  FrequentScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Triggers the COSMOS frequent monitor Lambda every 15 minutes"
+      ScheduleExpression: "rate(15 minutes)"
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt FrequentMonitorLambda.Arn
+          Id: "FrequentMonitorLambdaTarget"
+
+  PermissionForFrequentRule:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref FrequentMonitorLambda
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt FrequentScheduleRule.Arn
+
+  #-------------------------------------------------------------#
+  # --- Monitor 2: EOD Check (Runs on specific schedules) ---
+  #-------------------------------------------------------------#
+  EodMonitorLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: cosmos-eod-file-monitor
+      Handler: index.lambda_handler
+      Runtime: python3.12
+      Role: !GetAtt MonitoringLambdaRole.Arn
+      Timeout: 60
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref AlarmSnsTopicArn
+      Code:
+        ZipFile: |
+          import boto3
+          import os
+          from datetime import datetime, timedelta, timezone
+
+          SNS_TOPIC_ARN = os.environ['SNS_TOPIC_ARN']
+          EOD_CONFIG = {
+              'namespace': 'file_transfer_service', 'metric_name': 'batch_processed_count',
+              'dimension': {'Name': 'TagId', 'Value': 'EOD'}, 'threshold': 1750,
+              'period': 86400 # 24 hours
+          }
+          cloudwatch = boto3.client('cloudwatch')
+          sns = boto3.client('sns')
+
+          def lambda_handler(event, context):
+              now_utc = datetime.now(timezone.utc)
+              print(f"Running EOD check at {now_utc.isoformat()}")
+
+              response = cloudwatch.get_metric_data(
+                  MetricDataQueries=[{
+                      'Id': 'm1',
+                      'MetricStat': {
+                          'Metric': {
+                              'Namespace': EOD_CONFIG['namespace'], 'MetricName': EOD_CONFIG['metric_name'],
+                              'Dimensions': [EOD_CONFIG['dimension']]
+                          },
+                          'Period': EOD_CONFIG['period'], 'Stat': 'Sum',
+                      }, 'ReturnData': True,
+                  }],
+                  StartTime=now_utc - timedelta(seconds=EOD_CONFIG['period']), EndTime=now_utc
+              )
+              
+              values = response['MetricDataResults'][0]['Values']
+              
+              if not values or values[0] < EOD_CONFIG['threshold']:
+                  count = int(values[0]) if values else 0
+                  message = f"ALERT: EOD Threshold Not Met! Total file count in the last 24 hours was {count}, which is below the threshold of {EOD_CONFIG['threshold']}."
+                  subject = "COSMOS ALARM: EOD Threshold Not Met"
+                  print(message)
+                  sns.publish(TopicArn=SNS_TOPIC_ARN, Subject=subject, Message=message)
+              else:
+                  print(f"OK: EOD count was {int(values[0])}, which is at or above the threshold.")
+              
+              return {'statusCode': 200, 'body': 'EOD Check complete.'}
+
+  EodRuleMonFriSun:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Triggers the EOD monitor at 11:30 PM BST on Mon, Tue, Wed, Thu, Fri, Sun"
+      ScheduleExpression: "cron(30 22 ? * MON,TUE,WED,THU,FRI,SUN *)" # 22:30 UTC
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt EodMonitorLambda.Arn
+          Id: "EodMonitorLambdaTarget1"
+
+  PermissionForEodRule1:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref EodMonitorLambda
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt EodRuleMonFriSun.Arn
+
+  EodRuleSat:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Triggers the EOD monitor at 12:30 AM Sunday BST (for Saturday's data)"
+      ScheduleExpression: "cron(30 23 ? * SAT *)" # Saturday at 23:30 UTC
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt EodMonitorLambda.Arn
+          Id: "EodMonitorLambdaTarget2"
+
+  PermissionForEodRule2:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref EodMonitorLambda
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt EodRuleSat.Arn
+
+*************************
 ------------------------
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
