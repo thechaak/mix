@@ -1,3 +1,187 @@
+kakfa duplicaiton solution using lambda---
+
+To solve the duplicate transaction issue, the most robust and standard solution is to build an idempotent service. This means your processing system can receive the same message multiple times but will only act on it once, effectively preventing duplicates.
+
+We will implement this using an AWS Lambda function for processing and an Amazon DynamoDB table to track which transactions have already been seen.
+
+The Solution: Lambda for Logic, DynamoDB for Memory
+This architecture is a powerful pattern for creating resilient, serverless data pipelines.
+
+Trigger: Each message from your Kafka topic (sainsburys.data.sc-sss.txns.receipts.v5) will trigger the Lambda function.
+
+Deduplication Logic: For every message, the Lambda will:
+
+Extract a unique business ID from the message payload (e.g., INV_TXNS_STG_ID).
+
+Attempt to write this ID to a DynamoDB table using a conditional write, which only succeeds if the ID is not already present.
+
+Outcome:
+
+New Message: If the write to DynamoDB is successful, the Lambda executes your main business logic.
+
+Duplicate Message: If the write fails because the ID already exists, the Lambda logs the duplicate and stops, preventing it from being processed again.
+
+Detailed Implementation Steps ⚙️
+Here is how to build this solution from scratch.
+
+Step 1: Create a DynamoDB Table for Deduplication
+This table will act as the "memory" for your service, storing the IDs of processed transactions.
+
+Navigate to the DynamoDB service in the AWS Console.
+
+Click Create table.
+
+Table name: ProcessedTransactionIDs
+
+Partition key: transactionId (Type: String)
+
+Leave all other settings as default and click Create table.
+
+(Recommended) After the table is created, select it, go to the Additional settings tab, and find the Time to Live (TTL) section. Click Turn on.
+
+TTL attribute name: expirationTime
+
+This will automatically delete old transaction records after a set time to manage costs and keep the table clean.
+
+Step 2: Create an IAM Role for the Lambda Function
+The Lambda function needs specific permissions to operate.
+
+Navigate to the IAM service and create a new Role.
+
+Select AWS service and Lambda as the use case.
+
+Attach the necessary policies:
+
+AWSLambdaBasicExecutionRole (for writing logs to CloudWatch)
+
+AWSLambdaMSKExecutionRole (if using Amazon MSK as the trigger) or a similar policy for your Kafka event source.
+
+Create a new inline policy to grant permission to the DynamoDB table. Give it a name like DynamoDBPutItemPolicy and use the following JSON, replacing the example ARN with your actual table ARN.
+
+JSON
+
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": "dynamodb:PutItem",
+            "Resource": "arn:aws:dynamodb:eu-west-1:123456789012:table/ProcessedTransactionIDs"
+        }
+    ]
+}
+Give the overall role a name, like KafkaDeduplicationLambdaRole, and create it.
+
+Step 3: Create the Deduplication Lambda Function
+This function contains the core logic.
+
+Navigate to the Lambda service and Create function.
+
+Select Author from scratch.
+
+Function name: kafka-transaction-deduplicator
+
+Runtime: Python 3.12
+
+Permissions: Choose Use an existing role and select the KafkaDeduplicationLambdaRole you just created.
+
+Click Create function.
+
+In the Code source editor, paste the following Python code:
+
+Python
+
+import boto3
+import os
+import json
+import base64
+from botocore.exceptions import ClientError
+from datetime import datetime, timedelta, timezone
+
+# Get config from Lambda environment variables
+DYNAMODB_TABLE_NAME = os.environ['DYNAMODB_TABLE_NAME']
+
+# Initialize AWS clients
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table(DYNAMODB_TABLE_NAME)
+
+def lambda_handler(event, context):
+    # Kafka triggers often send records in batches
+    for topic, records in event.get('records', {}).items():
+        for record in records:
+            try:
+                # Decode the message value from Base64 and load its JSON content
+                message_value_str = base64.b64decode(record['value']).decode('utf-8')
+                message_body = json.loads(message_value_str)
+
+                # 1. Extract the unique business identifier from the message payload
+                transaction_id = message_body.get('INV_TXNS_STG_ID')
+
+                if not transaction_id:
+                    print("ERROR: Message is missing 'INV_TXNS_STG_ID'. Cannot deduplicate.")
+                    continue
+
+                print(f"Attempting to process transaction ID: {transaction_id}")
+
+                # 2. Attempt a conditional write to DynamoDB to claim this ID
+                # Set an expiration time (e.g., 7 days) for the record to be auto-deleted by TTL
+                expiration_ts = int((datetime.now(timezone.utc) + timedelta(days=7)).timestamp())
+
+                table.put_item(
+                    Item={
+                        'transactionId': str(transaction_id),
+                        'processedAt': datetime.now(timezone.utc).isoformat(),
+                        'expirationTime': expiration_ts
+                    },
+                    # This is the core of the deduplication logic. It fails if an item
+                    # with the same 'transactionId' already exists.
+                    ConditionExpression='attribute_not_exists(transactionId)'
+                )
+
+                # 3. If the write succeeded, it's a new transaction. Process it.
+                print(f"SUCCESS: New transaction. Executing business logic for ID: {transaction_id}")
+                execute_business_logic(message_body)
+
+            except ClientError as e:
+                # 4. If the conditional check failed, it's a duplicate.
+                if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+                    print(f"DUPLICATE DETECTED: Transaction ID {transaction_id} already processed. Skipping.")
+                    # Gracefully exit without error
+                else:
+                    # Re-raise other DynamoDB errors
+                    print(f"ERROR: A DynamoDB error occurred: {e}")
+                    raise e
+            except Exception as e:
+                print(f"ERROR: An unexpected error occurred while processing the record: {e}")
+                raise e
+
+def execute_business_logic(message):
+    """
+    This is a placeholder for your actual processing logic.
+    For example: insert a record into a database, call another service, etc.
+    """
+    print("Executing the main business logic...")
+    # --- ADD YOUR BUSINESS LOGIC HERE ---
+    pass
+Click the Deploy button.
+
+Step 4: Configure the Lambda Function
+In the function's Configuration tab, go to Environment variables.
+
+Click Edit and add a new variable:
+
+Key: DYNAMODB_TABLE_NAME
+
+Value: ProcessedTransactionIDs
+
+From the function overview, click Add trigger. Configure it to read from your Kafka topic (sainsburys.data.sc-sss.txns.receipts.v5). The exact steps will depend on your Kafka setup (Amazon MSK, Confluent Cloud, etc.).
+
+This solution will now reliably prevent duplicate transactions from being processed, making your data pipeline resilient to the at-least-once delivery behavior of Kafka Connect during failures.
+
+----------
+
+
+
 logs:
 
 {
