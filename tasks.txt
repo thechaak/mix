@@ -1,5 +1,14 @@
 logs:
 
+{
+    "container_id": "d6442412bc204b4096414d11ca81d085-2610152438",
+    "container_name": "connect-cluster",
+    "ecs_cluster": "devel",
+    "ecs_task_arn": "arn:aws:ecs:eu-west-1:699307468732:task/devel/d6442412bc204b4096414d11ca81d085",
+    "ecs_task_definition": "connect:263",
+    "log": "java.net.SocketTimeoutException: connect timed out\n\tat java.base/java.net.PlainSocketImpl.socketConnect(Native Method)\n\tat java.base/java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:412)\n\tat java.base/java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:255)\n\tat java.base/java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:237)\n\tat java.base/java.net.SocksSocketImpl.connect(SocksSocketImpl.java:392)\n\tat java.base/java.net.Socket.connect(Socket.java:615)\n\tat com.rabbitmq.client.impl.SocketFrameHandlerFactory.create(SocketFrameHandlerFactory.java:61)\n\tat com.rabbitmq.client.impl.recovery.RecoveryAwareAMQConnectionFactory.newConnection(RecoveryAwareAMQConnectionFactory.java:63)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.recoverConnection(AutorecoveringConnection.java:623)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.beginAutomaticRecovery(AutorecoveringConnection.java:584)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.lambda$addAutomaticRecoveryListener$3(AutorecoveringConnection.java:519)\n\tat com.rabbitmq.client.impl.AMQConnection.notifyRecoveryCanBeginListeners(AMQConnection.java:824)\n\tat com.rabbitmq.client.impl.AMQConnection.doFinalShutdown(AMQConnection.java:801)\n\tat com.rabbitmq.client.impl.AMQConnection$MainLoop.run(AMQConnection.java:685)\n\tat java.base/java.lang.Thread.run(Thread.java:829)",
+    "source": "stdout"
+}
 
 {"container_id":"d6442412bc204b4096414d11ca81d085-2610152438","container_name":"connect-cluster","ecs_cluster":"devel","ecs_task_arn":"arn:aws:ecs:eu-west-1:699307468732:task/devel/d6442412bc204b4096414d11ca81d085","ecs_task_definition":"connect:263","log":"java.net.SocketTimeoutException: connect timed out\n\tat java.base/java.net.PlainSocketImpl.socketConnect(Native Method)\n\tat java.base/java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:412)\n\tat java.base/java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:255)\n\tat java.base/java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:237)\n\tat java.base/java.net.SocksSocketImpl.connect(SocksSocketImpl.java:392)\n\tat java.base/java.net.Socket.connect(Socket.java:615)\n\tat com.rabbitmq.client.impl.SocketFrameHandlerFactory.create(SocketFrameHandlerFactory.java:61)\n\tat com.rabbitmq.client.impl.recovery.RecoveryAwareAMQConnectionFactory.newConnection(RecoveryAwareAMQConnectionFactory.java:63)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.recoverConnection(AutorecoveringConnection.java:623)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.beginAutomaticRecovery(AutorecoveringConnection.java:584)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.lambda$addAutomaticRecoveryListener$3(AutorecoveringConnection.java:519)\n\tat com.rabbitmq.client.impl.AMQConnection.notifyRecoveryCanBeginListeners(AMQConnection.java:824)\n\tat com.rabbitmq.client.impl.AMQConnection.doFinalShutdown(AMQConnection.java:801)\n\tat com.rabbitmq.client.impl.AMQConnection$MainLoop.run(AMQConnection.java:685)\n\tat java.base/java.lang.Thread.run(Thread.java:829)","source":"stdout"}
 2025-09-03T03:28:26.518Z
@@ -61,6 +70,112 @@ logs:
     "source": "stdout"
 }
 
+{"container_id":"d6442412bc204b4096414d11ca81d085-2610152438","container_name":"connect-cluster","ecs_cluster":"devel","ecs_task_arn":"arn:aws:ecs:eu-west-1:699307468732:task/devel/d6442412bc204b4096414d11ca81d085","ecs_task_definition":"connect:263","log":"[2025-09-03 04:29:36,580] ERROR [sc-sss-wet-stock-mq-connector|task-0] Caught an exception during connection recovery! (com.rabbitmq.client.impl.ForgivingExceptionHandler:119)","source":"stdout"}
+2025-09-03T03:29:36.580Z
+{
+    "container_id": "d6442412bc204b4096414d11ca81d085-2610152438",
+    "container_name": "connect-cluster",
+    "ecs_cluster": "devel",
+    "ecs_task_arn": "arn:aws:ecs:eu-west-1:699307468732:task/devel/d6442412bc204b4096414d11ca81d085",
+    "ecs_task_definition": "connect:263",
+    "log": "java.net.SocketTimeoutException: connect timed out\n\tat java.base/java.net.PlainSocketImpl.socketConnect(Native Method)\n\tat java.base/java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:412)\n\tat java.base/java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:255)\n\tat java.base/java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:237)\n\tat java.base/java.net.SocksSocketImpl.connect(SocksSocketImpl.java:392)\n\tat java.base/java.net.Socket.connect(Socket.java:615)\n\tat com.rabbitmq.client.impl.SocketFrameHandlerFactory.create(SocketFrameHandlerFactory.java:61)\n\tat com.rabbitmq.client.impl.recovery.RecoveryAwareAMQConnectionFactory.newConnection(RecoveryAwareAMQConnectionFactory.java:63)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.recoverConnection(AutorecoveringConnection.java:623)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.beginAutomaticRecovery(AutorecoveringConnection.java:584)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.lambda$addAutomaticRecoveryListener$3(AutorecoveringConnection.java:519)\n\tat com.rabbitmq.client.impl.AMQConnection.notifyRecoveryCanBeginListeners(AMQConnection.java:824)\n\tat com.rabbitmq.client.impl.AMQConnection.doFinalShutdown(AMQConnection.java:801)\n\tat com.rabbitmq.client.impl.AMQConnection$MainLoop.run(AMQConnection.java:685)\n\tat java.base/java.lang.Thread.run(Thread.java:829)",
+    "source": "stdout"
+}
+
+{"container_id":"d6442412bc204b4096414d11ca81d085-2610152438","container_name":"connect-cluster","ecs_cluster":"devel","ecs_task_arn":"arn:aws:ecs:eu-west-1:699307468732:task/devel/d6442412bc204b4096414d11ca81d085","ecs_task_definition":"connect:263","log":"java.net.SocketTimeoutException: connect timed out\n\tat java.base/java.net.PlainSocketImpl.socketConnect(Native Method)\n\tat java.base/java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:412)\n\tat java.base/java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:255)\n\tat java.base/java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:237)\n\tat java.base/java.net.SocksSocketImpl.connect(SocksSocketImpl.java:392)\n\tat java.base/java.net.Socket.connect(Socket.java:615)\n\tat com.rabbitmq.client.impl.SocketFrameHandlerFactory.create(SocketFrameHandlerFactory.java:61)\n\tat com.rabbitmq.client.impl.recovery.RecoveryAwareAMQConnectionFactory.newConnection(RecoveryAwareAMQConnectionFactory.java:63)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.recoverConnection(AutorecoveringConnection.java:623)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.beginAutomaticRecovery(AutorecoveringConnection.java:584)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.lambda$addAutomaticRecoveryListener$3(AutorecoveringConnection.java:519)\n\tat com.rabbitmq.client.impl.AMQConnection.notifyRecoveryCanBeginListeners(AMQConnection.java:824)\n\tat com.rabbitmq.client.impl.AMQConnection.doFinalShutdown(AMQConnection.java:801)\n\tat com.rabbitmq.client.impl.AMQConnection$MainLoop.run(AMQConnection.java:685)\n\tat java.base/java.lang.Thread.run(Thread.java:829)","source":"stdout"}
+2025-09-03T03:30:46.620Z
+{
+    "container_id": "d6442412bc204b4096414d11ca81d085-2610152438",
+    "container_name": "connect-cluster",
+    "ecs_cluster": "devel",
+    "ecs_task_arn": "arn:aws:ecs:eu-west-1:699307468732:task/devel/d6442412bc204b4096414d11ca81d085",
+    "ecs_task_definition": "connect:263",
+    "log": "[2025-09-03 04:30:46,620] ERROR [sc-sss-wet-shrinkage-mq-connector|task-0] Caught an exception during connection recovery! (com.rabbitmq.client.impl.ForgivingExceptionHandler:119)",
+    "source": "stdout"
+}
+
+{"container_id":"d6442412bc204b4096414d11ca81d085-2610152438","container_name":"connect-cluster","ecs_cluster":"devel","ecs_task_arn":"arn:aws:ecs:eu-west-1:699307468732:task/devel/d6442412bc204b4096414d11ca81d085","ecs_task_definition":"connect:263","log":"[2025-09-03 04:30:46,620] ERROR [sc-sss-wet-shrinkage-mq-connector|task-0] Caught an exception during connection recovery! (com.rabbitmq.client.impl.ForgivingExceptionHandler:119)","source":"stdout"}
+2025-09-03T03:30:46.620Z
+{
+    "container_id": "d6442412bc204b4096414d11ca81d085-2610152438",
+    "container_name": "connect-cluster",
+    "ecs_cluster": "devel",
+    "ecs_task_arn": "arn:aws:ecs:eu-west-1:699307468732:task/devel/d6442412bc204b4096414d11ca81d085",
+    "ecs_task_definition": "connect:263",
+    "log": "java.net.SocketTimeoutException: connect timed out\n\tat java.base/java.net.PlainSocketImpl.socketConnect(Native Method)\n\tat java.base/java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:412)\n\tat java.base/java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:255)\n\tat java.base/java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:237)\n\tat java.base/java.net.SocksSocketImpl.connect(SocksSocketImpl.java:392)\n\tat java.base/java.net.Socket.connect(Socket.java:615)\n\tat com.rabbitmq.client.impl.SocketFrameHandlerFactory.create(SocketFrameHandlerFactory.java:61)\n\tat com.rabbitmq.client.impl.recovery.RecoveryAwareAMQConnectionFactory.newConnection(RecoveryAwareAMQConnectionFactory.java:63)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.recoverConnection(AutorecoveringConnection.java:623)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.beginAutomaticRecovery(AutorecoveringConnection.java:584)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.lambda$addAutomaticRecoveryListener$3(AutorecoveringConnection.java:519)\n\tat com.rabbitmq.client.impl.AMQConnection.notifyRecoveryCanBeginListeners(AMQConnection.java:824)\n\tat com.rabbitmq.client.impl.AMQConnection.doFinalShutdown(AMQConnection.java:801)\n\tat com.rabbitmq.client.impl.AMQConnection$MainLoop.run(AMQConnection.java:685)\n\tat java.base/java.lang.Thread.run(Thread.java:829)",
+    "source": "stdout"
+}
+
+{"container_id":"d6442412bc204b4096414d11ca81d085-2610152438","container_name":"connect-cluster","ecs_cluster":"devel","ecs_task_arn":"arn:aws:ecs:eu-west-1:699307468732:task/devel/d6442412bc204b4096414d11ca81d085","ecs_task_definition":"connect:263","log":"java.net.SocketTimeoutException: connect timed out\n\tat java.base/java.net.PlainSocketImpl.socketConnect(Native Method)\n\tat java.base/java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:412)\n\tat java.base/java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:255)\n\tat java.base/java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:237)\n\tat java.base/java.net.SocksSocketImpl.connect(SocksSocketImpl.java:392)\n\tat java.base/java.net.Socket.connect(Socket.java:615)\n\tat com.rabbitmq.client.impl.SocketFrameHandlerFactory.create(SocketFrameHandlerFactory.java:61)\n\tat com.rabbitmq.client.impl.recovery.RecoveryAwareAMQConnectionFactory.newConnection(RecoveryAwareAMQConnectionFactory.java:63)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.recoverConnection(AutorecoveringConnection.java:623)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.beginAutomaticRecovery(AutorecoveringConnection.java:584)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.lambda$addAutomaticRecoveryListener$3(AutorecoveringConnection.java:519)\n\tat com.rabbitmq.client.impl.AMQConnection.notifyRecoveryCanBeginListeners(AMQConnection.java:824)\n\tat com.rabbitmq.client.impl.AMQConnection.doFinalShutdown(AMQConnection.java:801)\n\tat com.rabbitmq.client.impl.AMQConnection$MainLoop.run(AMQConnection.java:685)\n\tat java.base/java.lang.Thread.run(Thread.java:829)","source":"stdout"}
+2025-09-03T03:30:46.621Z
+{
+    "container_id": "d6442412bc204b4096414d11ca81d085-2610152438",
+    "container_name": "connect-cluster",
+    "ecs_cluster": "devel",
+    "ecs_task_arn": "arn:aws:ecs:eu-west-1:699307468732:task/devel/d6442412bc204b4096414d11ca81d085",
+    "ecs_task_definition": "connect:263",
+    "log": "[2025-09-03 04:30:46,620] ERROR [sc-sss-wet-stock-mq-connector|task-0] Caught an exception during connection recovery! (com.rabbitmq.client.impl.ForgivingExceptionHandler:119)",
+    "source": "stdout"
+}
+
+{"container_id":"d6442412bc204b4096414d11ca81d085-2610152438","container_name":"connect-cluster","ecs_cluster":"devel","ecs_task_arn":"arn:aws:ecs:eu-west-1:699307468732:task/devel/d6442412bc204b4096414d11ca81d085","ecs_task_definition":"connect:263","log":"[2025-09-03 04:30:46,620] ERROR [sc-sss-wet-stock-mq-connector|task-0] Caught an exception during connection recovery! (com.rabbitmq.client.impl.ForgivingExceptionHandler:119)","source":"stdout"}
+2025-09-03T03:30:46.621Z
+{
+    "container_id": "d6442412bc204b4096414d11ca81d085-2610152438",
+    "container_name": "connect-cluster",
+    "ecs_cluster": "devel",
+    "ecs_task_arn": "arn:aws:ecs:eu-west-1:699307468732:task/devel/d6442412bc204b4096414d11ca81d085",
+    "ecs_task_definition": "connect:263",
+    "log": "java.net.SocketTimeoutException: connect timed out\n\tat java.base/java.net.PlainSocketImpl.socketConnect(Native Method)\n\tat java.base/java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:412)\n\tat java.base/java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:255)\n\tat java.base/java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:237)\n\tat java.base/java.net.SocksSocketImpl.connect(SocksSocketImpl.java:392)\n\tat java.base/java.net.Socket.connect(Socket.java:615)\n\tat com.rabbitmq.client.impl.SocketFrameHandlerFactory.create(SocketFrameHandlerFactory.java:61)\n\tat com.rabbitmq.client.impl.recovery.RecoveryAwareAMQConnectionFactory.newConnection(RecoveryAwareAMQConnectionFactory.java:63)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.recoverConnection(AutorecoveringConnection.java:623)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.beginAutomaticRecovery(AutorecoveringConnection.java:584)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.lambda$addAutomaticRecoveryListener$3(AutorecoveringConnection.java:519)\n\tat com.rabbitmq.client.impl.AMQConnection.notifyRecoveryCanBeginListeners(AMQConnection.java:824)\n\tat com.rabbitmq.client.impl.AMQConnection.doFinalShutdown(AMQConnection.java:801)\n\tat com.rabbitmq.client.impl.AMQConnection$MainLoop.run(AMQConnection.java:685)\n\tat java.base/java.lang.Thread.run(Thread.java:829)",
+    "source": "stdout"
+}
+
+{"container_id":"d6442412bc204b4096414d11ca81d085-2610152438","container_name":"connect-cluster","ecs_cluster":"devel","ecs_task_arn":"arn:aws:ecs:eu-west-1:699307468732:task/devel/d6442412bc204b4096414d11ca81d085","ecs_task_definition":"connect:263","log":"java.net.SocketTimeoutException: connect timed out\n\tat java.base/java.net.PlainSocketImpl.socketConnect(Native Method)\n\tat java.base/java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:412)\n\tat java.base/java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:255)\n\tat java.base/java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:237)\n\tat java.base/java.net.SocksSocketImpl.connect(SocksSocketImpl.java:392)\n\tat java.base/java.net.Socket.connect(Socket.java:615)\n\tat com.rabbitmq.client.impl.SocketFrameHandlerFactory.create(SocketFrameHandlerFactory.java:61)\n\tat com.rabbitmq.client.impl.recovery.RecoveryAwareAMQConnectionFactory.newConnection(RecoveryAwareAMQConnectionFactory.java:63)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.recoverConnection(AutorecoveringConnection.java:623)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.beginAutomaticRecovery(AutorecoveringConnection.java:584)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.lambda$addAutomaticRecoveryListener$3(AutorecoveringConnection.java:519)\n\tat com.rabbitmq.client.impl.AMQConnection.notifyRecoveryCanBeginListeners(AMQConnection.java:824)\n\tat com.rabbitmq.client.impl.AMQConnection.doFinalShutdown(AMQConnection.java:801)\n\tat com.rabbitmq.client.impl.AMQConnection$MainLoop.run(AMQConnection.java:685)\n\tat java.base/java.lang.Thread.run(Thread.java:829)","source":"stdout"}
+2025-09-03T03:31:56.677Z
+{
+    "container_id": "d6442412bc204b4096414d11ca81d085-2610152438",
+    "container_name": "connect-cluster",
+    "ecs_cluster": "devel",
+    "ecs_task_arn": "arn:aws:ecs:eu-west-1:699307468732:task/devel/d6442412bc204b4096414d11ca81d085",
+    "ecs_task_definition": "connect:263",
+    "log": "[2025-09-03 04:31:56,677] ERROR [sc-sss-wet-shrinkage-mq-connector|task-0] Caught an exception during connection recovery! (com.rabbitmq.client.impl.ForgivingExceptionHandler:119)",
+    "source": "stdout"
+}
+
+{"container_id":"d6442412bc204b4096414d11ca81d085-2610152438","container_name":"connect-cluster","ecs_cluster":"devel","ecs_task_arn":"arn:aws:ecs:eu-west-1:699307468732:task/devel/d6442412bc204b4096414d11ca81d085","ecs_task_definition":"connect:263","log":"[2025-09-03 04:31:56,677] ERROR [sc-sss-wet-shrinkage-mq-connector|task-0] Caught an exception during connection recovery! (com.rabbitmq.client.impl.ForgivingExceptionHandler:119)","source":"stdout"}
+2025-09-03T03:31:56.677Z
+{
+    "container_id": "d6442412bc204b4096414d11ca81d085-2610152438",
+    "container_name": "connect-cluster",
+    "ecs_cluster": "devel",
+    "ecs_task_arn": "arn:aws:ecs:eu-west-1:699307468732:task/devel/d6442412bc204b4096414d11ca81d085",
+    "ecs_task_definition": "connect:263",
+    "log": "java.net.SocketTimeoutException: connect timed out\n\tat java.base/java.net.PlainSocketImpl.socketConnect(Native Method)\n\tat java.base/java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:412)\n\tat java.base/java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:255)\n\tat java.base/java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:237)\n\tat java.base/java.net.SocksSocketImpl.connect(SocksSocketImpl.java:392)\n\tat java.base/java.net.Socket.connect(Socket.java:615)\n\tat com.rabbitmq.client.impl.SocketFrameHandlerFactory.create(SocketFrameHandlerFactory.java:61)\n\tat com.rabbitmq.client.impl.recovery.RecoveryAwareAMQConnectionFactory.newConnection(RecoveryAwareAMQConnectionFactory.java:63)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.recoverConnection(AutorecoveringConnection.java:623)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.beginAutomaticRecovery(AutorecoveringConnection.java:584)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.lambda$addAutomaticRecoveryListener$3(AutorecoveringConnection.java:519)\n\tat com.rabbitmq.client.impl.AMQConnection.notifyRecoveryCanBeginListeners(AMQConnection.java:824)\n\tat com.rabbitmq.client.impl.AMQConnection.doFinalShutdown(AMQConnection.java:801)\n\tat com.rabbitmq.client.impl.AMQConnection$MainLoop.run(AMQConnection.java:685)\n\tat java.base/java.lang.Thread.run(Thread.java:829)",
+    "source": "stdout"
+}
+
+{"container_id":"d6442412bc204b4096414d11ca81d085-2610152438","container_name":"connect-cluster","ecs_cluster":"devel","ecs_task_arn":"arn:aws:ecs:eu-west-1:699307468732:task/devel/d6442412bc204b4096414d11ca81d085","ecs_task_definition":"connect:263","log":"java.net.SocketTimeoutException: connect timed out\n\tat java.base/java.net.PlainSocketImpl.socketConnect(Native Method)\n\tat java.base/java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:412)\n\tat java.base/java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:255)\n\tat java.base/java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:237)\n\tat java.base/java.net.SocksSocketImpl.connect(SocksSocketImpl.java:392)\n\tat java.base/java.net.Socket.connect(Socket.java:615)\n\tat com.rabbitmq.client.impl.SocketFrameHandlerFactory.create(SocketFrameHandlerFactory.java:61)\n\tat com.rabbitmq.client.impl.recovery.RecoveryAwareAMQConnectionFactory.newConnection(RecoveryAwareAMQConnectionFactory.java:63)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.recoverConnection(AutorecoveringConnection.java:623)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.beginAutomaticRecovery(AutorecoveringConnection.java:584)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.lambda$addAutomaticRecoveryListener$3(AutorecoveringConnection.java:519)\n\tat com.rabbitmq.client.impl.AMQConnection.notifyRecoveryCanBeginListeners(AMQConnection.java:824)\n\tat com.rabbitmq.client.impl.AMQConnection.doFinalShutdown(AMQConnection.java:801)\n\tat com.rabbitmq.client.impl.AMQConnection$MainLoop.run(AMQConnection.java:685)\n\tat java.base/java.lang.Thread.run(Thread.java:829)","source":"stdout"}
+2025-09-03T03:31:56.682Z
+{
+    "container_id": "d6442412bc204b4096414d11ca81d085-2610152438",
+    "container_name": "connect-cluster",
+    "ecs_cluster": "devel",
+    "ecs_task_arn": "arn:aws:ecs:eu-west-1:699307468732:task/devel/d6442412bc204b4096414d11ca81d085",
+    "ecs_task_definition": "connect:263",
+    "log": "[2025-09-03 04:31:56,681] ERROR [sc-sss-wet-stock-mq-connector|task-0] Caught an exception during connection recovery! (com.rabbitmq.client.impl.ForgivingExceptionHandler:119)",
+    "source": "stdout"
+}
+
+{"container_id":"d6442412bc204b4096414d11ca81d085-2610152438","container_name":"connect-cluster","ecs_cluster":"devel","ecs_task_arn":"arn:aws:ecs:eu-west-1:699307468732:task/devel/d6442412bc204b4096414d11ca81d085","ecs_task_definition":"connect:263","log":"[2025-09-03 04:31:56,681] ERROR [sc-sss-wet-stock-mq-connector|task-0] Caught an exception during connection recovery! (com.rabbitmq.client.impl.ForgivingExceptionHandler:119)","source":"stdout"}
+2025-09-03T03:31:56.682Z
+{
+    "container_id": "d6442412bc204b4096414d11ca81d085-2610152438",
+    "container_name": "connect-cluster",
+    "ecs_cluster": "devel",
+    "ecs_task_arn": "arn:aws:ecs:eu-west-1:699307468732:task/devel/d6442412bc204b4096414d11ca81d085",
+    "ecs_task_definition": "connect:263",
+    "log": "java.net.SocketTimeoutException: connect timed out\n\tat java.base/java.net.PlainSocketImpl.socketConnect(Native Method)\n\tat java.base/java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:412)\n\tat java.base/java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:255)\n\tat java.base/java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:237)\n\tat java.base/java.net.SocksSocketImpl.connect(SocksSocketImpl.java:392)\n\tat java.base/java.net.Socket.connect(Socket.java:615)\n\tat com.rabbitmq.client.impl.SocketFrameHandlerFactory.create(SocketFrameHandlerFactory.java:61)\n\tat com.rabbitmq.client.impl.recovery.RecoveryAwareAMQConnectionFactory.newConnection(RecoveryAwareAMQConnectionFactory.java:63)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.recoverConnection(AutorecoveringConnection.java:623)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.beginAutomaticRecovery(AutorecoveringConnection.java:584)\n\tat com.rabbitmq.client.impl.recovery.AutorecoveringConnection.lambda$addAutomaticRecoveryListener$3(AutorecoveringConnection.java:519)\n\tat com.rabbitmq.client.impl.AMQConnection.notifyRecoveryCanBeginListeners(AMQConnection.java:824)\n\tat com.rabbitmq.client.impl.AMQConnection.doFinalShutdown(AMQConnection.java:801)\n\tat com.rabbitmq.client.impl.AMQConnection$MainLoop.run(AMQConnection.java:685)\n\tat java.base/java.lang.Thread.run(Thread.java:829)",
+    "source": "stdout"
 ----------------
 ----
 
