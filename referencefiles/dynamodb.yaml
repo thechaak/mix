@@ -1,0 +1,108 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AWS CloudFormation template to provision a DynamoDB table'
+Parameters:
+  TableName:
+    Description: Name of the DynamoDB table
+    Type: String
+    Default: ''
+  ReadCapacityUnits:
+    Description: Provisioned read throughput
+    Type: Number
+    Default: '5'
+    MinValue: '5'
+    MaxValue: '10000'
+    ConstraintDescription: must be between 5 and 10000
+  WriteCapacityUnits:
+    Description: Provisioned write throughput
+    Type: Number
+    Default: '5'
+    MinValue: '5'
+    MaxValue: '10000'
+    ConstraintDescription: must be between 5 and 10000
+
+
+  CostcentreTag:
+    AllowedPattern: '[\x20-\x7E]+'
+    ConstraintDescription: Must be ASCII
+    MaxLength: 128
+    MinLength: 2
+    Type: String
+    Default: "PD7890"
+  EnvironmentTag:
+    AllowedPattern: '[\x20-\x7E]+'
+    ConstraintDescription: Must be ASCII
+    MaxLength: 128
+    MinLength: 2
+    Type: String
+  OwnerTag:
+    AllowedPattern: '[\x20-\x7E]+'
+    ConstraintDescription: Must be ASCII
+    MaxLength: 128
+    MinLength: 2
+    Type: String
+  ProjectTag:
+    AllowedPattern: '[\x20-\x7E]+'
+    ConstraintDescription: Must be ASCII
+    MaxLength: 128
+    MinLength: 2
+    Type: String
+  LiveTag:
+    Type: String
+    AllowedValues:
+      - "yes"
+      - "no"
+    Default: "no"
+  DataRetentionTag:
+    Type: String
+    AllowedValues:
+      - "1-month"
+      - "7-months"
+      - "14-months"
+      - "4-years"
+      - "7-years"
+      - ">7-years"
+    Default: "7-months"
+  DataClassificationTag:
+    Type: String
+    AllowedValues:
+      - "public"
+      - "confidential"
+      - "highlySensitive"
+      - "highlySensitivePersonal"
+    Default: "confidential"
+
+Resources:
+  SainIDMappingTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref 'TableName'
+      AttributeDefinitions:
+        - AttributeName: "LEGACY_SKU"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "LEGACY_SKU"
+          KeyType: "HASH"
+      ProvisionedThroughput:
+        ReadCapacityUnits: !Ref 'ReadCapacityUnits'
+        WriteCapacityUnits: !Ref 'WriteCapacityUnits'
+      Tags:
+        - Key: costcentre
+          Value: !Ref 'CostcentreTag'
+        - Key: environment
+          Value: !Ref 'EnvironmentTag'
+        - Key: owner
+          Value: !Ref 'OwnerTag'
+        - Key: project
+          Value: !Ref 'ProjectTag'
+        - Key: live
+          Value: !Ref 'LiveTag'
+        - Key: dataClassification
+          Value: !Ref 'DataClassificationTag'
+        - Key: dataRetention
+          Value: !Ref 'DataRetentionTag'
+        - Key: tableName
+          Value: !Ref 'TableName'
+Outputs:
+  TableName:
+    Value: !Ref 'SainIDMappingTable'
+    Description: Table name of the newly created DynamoDB table

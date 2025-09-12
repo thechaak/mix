@@ -1,0 +1,361 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Serverless Application Model (SAM) template to create a lambda which will consume Kafka Triggered KafkaEvent from a Kafka Trigger
+Parameters:
+  CostcentreTag:
+    AllowedPattern: '[\x20-\x7E]+'
+    ConstraintDescription: Must be ASCII
+    MaxLength: 128
+    MinLength: 2
+    Type: String
+  EnvironmentTag:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - test
+      - e2e
+      - stg
+      - preprod
+      - prod
+    Description: Select an environment to provision the resources
+  Profile:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - test
+      - stg
+      - e2e
+      - preprod
+      - prod
+  EmailTag:
+    AllowedPattern: '[\x20-\x7E]+'
+    ConstraintDescription: Must be ASCII
+    MaxLength: 128
+    MinLength: 2
+    Type: String
+    Default: scintsvcs.support@sainsburys.co.uk
+  ProjectTag:
+    AllowedPattern: '[\x20-\x7E]+'
+    ConstraintDescription: Must be ASCII
+    MaxLength: 128
+    MinLength: 2
+    Type: String
+  LiveTag:
+    Type: String
+    AllowedValues:
+      - 'yes'
+      - 'no'
+    Default: 'no'
+
+  PermissionsBoundaryPolicy:
+    Type: String
+    Default: 'ccoe/js-developer'
+
+  FunctionName:
+    Type: String
+  FunctionMemorySize:
+    Type: Number
+    Default: 3000
+  FunctionReservedConcurrentExecutions:
+    Type: Number
+    Default: 1
+  FunctionRuntime:
+    Type: String
+    AllowedValues:
+      - 'java11'
+      - 'java17'
+    Default: 'java17'
+  FunctionTimeout:
+    Type: Number
+    Default: 900
+  FunctionHandler:
+    Type: String
+  PrimaryAlertsMailId:
+    Description: Primary mail to which alerts must be sent
+    Type: String
+  SecondaryAlertsMailId:
+    Description: Secondary mail to which alerts must be sent
+    Type: String
+    Default: none
+  EnableCloudWatchAlarms:
+    AllowedValues:
+      - 'True'
+      - 'False'
+    Default: 'False'
+    Type: String
+  VpcId:
+    Type: String
+    Description: VPC Id
+  Subnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: VPC Subnets to run the test into.
+  SubnetId1:
+    Type: String
+    Description: Subnet Id
+  SubnetId2:
+    Type: String
+    Description: Subnet Id
+  Alias:
+    Type: String
+  KafkaTopic:
+    Type: String
+  BatchSize:
+    Type: Number
+    Default: 1000
+  KafkaTriggerEnabled:
+    AllowedValues:
+      - 'True'
+      - 'False'
+    Default: 'True'
+    Type: String
+  ConsumerGroupId:
+    Type: String
+  KafkaSecretArn:
+    Type: String
+  KafkaSecretName:
+    Type: String
+  s2dRolloutStatus:
+    Type: String
+  SpringDataMongodbUri:
+    Type: String
+
+Conditions:
+  EnableCloudWatchAlarms: !Equals
+    - !Ref 'EnableCloudWatchAlarms'
+    - 'True'
+  UseSecAlertsMailId: !Not
+    - !Equals [ !Ref SecondaryAlertsMailId, "none" ]
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    PermissionsBoundary: !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundaryPolicy}'
+    Tags:
+      costcentre: !Ref 'CostcentreTag'
+      environment: !Ref 'EnvironmentTag'
+      email: !Ref 'EmailTag'
+      project: !Ref 'ProjectTag'
+      live: !Ref 'LiveTag'
+
+Resources:
+  InboundTriggerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: [ 'sts:AssumeRole' ]
+      Path: /
+      PermissionsBoundary: !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundaryPolicy}'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole'
+        - 'arn:aws:iam::aws:policy/AWSLambda_ReadOnlyAccess'
+        - 'arn:aws:iam::aws:policy/CloudWatchLambdaInsightsExecutionRolePolicy'
+      Policies:
+        - PolicyName: CodebuildreportAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AccessToCodebuildreport
+                Action:
+                  - codebuild:BatchPutCodeCoverages
+                  - codebuild:*
+                Effect: Allow
+                Resource: "*"
+        - PolicyName: SecretsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: SecretsReadAccess
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:GetSecret
+                Effect: Allow
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:*'
+        - PolicyName: SsmParameterAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AccessToSsmParameters
+                Action:
+                  - ssm:GetParametersByPath
+                Effect: Allow
+                Resource: "*"
+        - PolicyName: CloudWatchAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AccessToCloudWatch
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:CreateLogGroup
+                Effect: Allow
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*"
+      RoleName:
+        !Sub '${FunctionName}-role-${EnvironmentTag}'
+      Tags:
+        - Key: costcentre
+          Value: !Ref 'CostcentreTag'
+        - Key: environment
+          Value: !Ref 'EnvironmentTag'
+        - Key: email
+          Value: !Ref 'EmailTag'
+        - Key: project
+          Value: !Ref 'ProjectTag'
+        - Key: live
+          Value: !Ref 'LiveTag'
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'Security Group governing traffic to and from Lambda '
+      GroupName: !Sub "${FunctionName}-${EnvironmentTag}"
+      VpcId: !Ref 'VpcId'
+      Tags:
+        - Key: costcentre
+          Value: !Ref 'CostcentreTag'
+        - Key: environment
+          Value: !Ref 'EnvironmentTag'
+        - Key: email
+          Value: !Ref 'EmailTag'
+        - Key: project
+          Value: !Ref 'ProjectTag'
+        - Key: live
+          Value: !Ref 'LiveTag'
+
+  SGAlltrafficRule:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: 'Allow all outbound traffic'
+      GroupId: !Ref 'LambdaSecurityGroup'
+      IpProtocol: "-1"
+      FromPort: 0
+      ToPort: 65535
+      CidrIp: '0.0.0.0/0'
+
+  Function:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: $JAR_FILE
+      Handler: !Ref 'FunctionHandler'
+      Runtime: !Ref 'FunctionRuntime'
+      MemorySize: !Ref 'FunctionMemorySize'
+      AutoPublishAlias: !Ref 'Alias'
+      AutoPublishAliasAllProperties: true
+      ReservedConcurrentExecutions: !Ref 'FunctionReservedConcurrentExecutions'
+      Timeout: !Ref 'FunctionTimeout'
+      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
+        Variables:
+          spring_profiles_active: !Ref 'Profile'
+          spring_config_import: !Join  [ ",", [ !Sub "aws-secretsmanager:${KafkaSecretName}", !Sub "aws-parameterstore:${s2dRolloutStatus}", !Sub "aws-parameterstore:${SpringDataMongodbUri}" ] ]
+      FunctionName:
+        !Sub '${FunctionName}-${EnvironmentTag}'
+      Role:
+        !GetAtt 'InboundTriggerLambdaRole.Arn'
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref 'LambdaSecurityGroup'
+        SubnetIds: !Ref 'Subnets'
+  #  Kafka Trigger Event Source Mapping section
+  KafkaTriggerEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    DependsOn: Function
+    Properties:
+      BatchSize: !Ref 'BatchSize'
+      Enabled: !Ref 'KafkaTriggerEnabled'
+      FunctionName: !Ref FunctionAliaslive
+      SelfManagedEventSource:
+        Endpoints:
+          KafkaBootstrapServers:
+            - !Sub '{{resolve:secretsmanager:${KafkaSecretArn}:SecretString:BOOTSTRAP_SERVERS}}'
+      SelfManagedKafkaEventSourceConfig:
+        ConsumerGroupId: !Ref 'ConsumerGroupId'
+      SourceAccessConfigurations:
+        - Type: "BASIC_AUTH"
+          URI: !Ref 'KafkaSecretArn'
+        - Type: "VPC_SUBNET"
+          URI: !Sub 'subnet:${SubnetId1}'
+        - Type: "VPC_SUBNET"
+          URI: !Sub 'subnet:${SubnetId2}'
+        - Type: "VPC_SECURITY_GROUP"
+          URI: !Sub 'security_group:${LambdaSecurityGroup.GroupId}'
+      StartingPosition: "LATEST"
+      Topics:
+        - !Ref 'KafkaTopic'
+  # Application alerting section
+  AlertSnsTopic:
+    Type: AWS::SNS::Topic
+    Condition: EnableCloudWatchAlarms
+    Properties:
+      Subscription:
+        - Endpoint: !Ref 'PrimaryAlertsMailId'
+          Protocol: email
+        - Fn::If:
+            - UseSecAlertsMailId
+            - Endpoint: !Ref 'SecondaryAlertsMailId'
+              Protocol: email
+            - !Ref "AWS::NoValue"
+      TopicName: !Sub 'Lambda-fn-${FunctionName}-${EnvironmentTag}'
+      Tags:
+        - Key: costcentre
+          Value: !Ref 'CostcentreTag'
+        - Key: environment
+          Value: !Ref 'EnvironmentTag'
+        - Key: live
+          Value: !Ref 'LiveTag'
+        - Key: email
+          Value: !Ref 'EmailTag'
+        - Key: project
+          Value: !Ref 'ProjectTag'
+
+  CWAlarmArchivalLambda000001:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn: Function
+    Condition: EnableCloudWatchAlarms
+    Properties:
+      ActionsEnabled: TRUE
+      AlarmDescription: !Sub 'To notify that Lambda function ${FunctionName} error in ${EnvironmentTag}'
+      AlarmName: !Sub 'POM_SUPPORTISSUE_NSMEVENTS_000006_${EnvironmentTag}_sc-pom-s2d-non-perishable-end-batch-trigger-lambda_RUN_FAIL'
+      MetricName: "Errors"
+      Namespace: "AWS/Lambda"
+      Dimensions:
+        - Name: FunctionName
+          Value: !Sub '${FunctionName}-${EnvironmentTag}'
+      Period: '300'
+      Statistic: 'Sum'
+      EvaluationPeriods: '1'
+      Threshold: 1
+      ComparisonOperator: 'GreaterThanOrEqualToThreshold'
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref 'AlertSnsTopic'
+  CWAlarmArchivalLambda000002:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn: Function
+    Condition: EnableCloudWatchAlarms
+    Properties:
+      ActionsEnabled: TRUE
+      AlarmDescription: !Sub 'To notify Lambda function ${FunctionName} is throttling in ${EnvironmentTag}'
+      AlarmName: !Sub 'POM_SUPPORTISSUE_NSMEVENTS_000008_${EnvironmentTag}_sc-pom-s2d-non-perishable-end-batch-trigger-lambda_THROTTLE'
+      MetricName: "Throttles"
+      Namespace: "AWS/Lambda"
+      Dimensions:
+        - Name: FunctionName
+          Value: !Sub '${FunctionName}-${EnvironmentTag}'
+      Period: '300'
+      Statistic: 'Sum'
+      EvaluationPeriods: '1'
+      Threshold: 1
+      ComparisonOperator: 'GreaterThanOrEqualToThreshold'
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref 'AlertSnsTopic'
