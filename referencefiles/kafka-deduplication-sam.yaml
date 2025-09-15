@@ -1,0 +1,233 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  A complete SAM template to create a Python Lambda function and DynamoDB table for idempotent
+  processing (deduplication) of Kafka messages.
+
+Parameters:
+  # --- Standard Tagging Parameters
+  CostcentreTag:
+    Type: String
+    Default: "PD7890"
+  ProjectTag:
+    Type: String
+  EnvironmentTag:
+    Type: String
+    Default: dev
+  OwnerTag:
+    Type: String
+  LiveTag:
+    Type: String
+    AllowedValues: ['yes', 'no']
+    Default: 'no'
+
+  # --- DynamoDB Parameters
+  TableName:
+    Description: Name of the DynamoDB table for deduplication.
+    Type: String
+    Default: 'ProcessedTransactionIDs'
+  ReadCapacityUnits:
+    Description: Provisioned read throughput for the DynamoDB table.
+    Type: Number
+    Default: 5
+  WriteCapacityUnits:
+    Description: Provisioned write throughput for the DynamoDB table.
+    Type: Number
+    Default: 5
+
+  # --- Lambda & Kafka Parameters
+  PermissionsBoundaryPolicy:
+    Type: String
+    Default: 'ccoe/js-developer'
+  FunctionName:
+    Type: String
+    Default: 'kafka-transaction-deduplicator'
+  FunctionMemorySize:
+    Type: Number
+    Default: 1024
+  FunctionTimeout:
+    Type: Number
+    Default: 60
+  VpcId:
+    Type: String
+    Description: VPC Id where the Lambda function will run.
+  Subnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: A list of VPC Subnet IDs for the Lambda function.
+  KafkaTopic:
+    Type: String
+    Description: The specific Kafka topic to consume from.
+  ConsumerGroupId:
+    Type: String
+    Description: The consumer group ID for the Lambda trigger.
+  KafkaSecretArn:
+    Type: String
+    Description: The ARN of the Secrets Manager secret containing Kafka credentials.
+
+Resources:
+  # 1. DynamoDB Table for storing processed transaction IDs
+  DeduplicationTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref TableName
+      AttributeDefinitions:
+        - AttributeName: "transactionId"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "transactionId"
+          KeyType: "HASH"
+      ProvisionedThroughput:
+        ReadCapacityUnits: !Ref ReadCapacityUnits
+        WriteCapacityUnits: !Ref WriteCapacityUnits
+      TimeToLiveSpecification:
+        AttributeName: "expirationTime"
+        Enabled: true
+      Tags:
+        - Key: costcentre
+          Value: !Ref CostcentreTag
+        - Key: project
+          Value: !Ref ProjectTag
+        - Key: environment
+          Value: !Ref EnvironmentTag
+        - Key: owner
+          Value: !Ref OwnerTag
+        - Key: live
+          Value: !Ref LiveTag
+
+  # 2. IAM Role for the Lambda Function
+  DeduplicationLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: 'sts:AssumeRole'
+      Path: /
+      PermissionsBoundary: !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundaryPolicy}'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole'
+        - 'arn:aws:iam::aws:policy/AWSLambda_ReadOnlyAccess'
+      Policies:
+        - PolicyName: DynamoDBWriteAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AllowPutItem
+                Effect: Allow
+                Action: 'dynamodb:PutItem'
+                Resource: !GetAtt DeduplicationTable.Arn
+        - PolicyName: CloudWatchAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AccessToCloudWatch
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:CreateLogGroup
+                Effect: Allow
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*"
+      RoleName: !Sub '${FunctionName}-role-${EnvironmentTag}'
+
+  # 3. Security Group for the Lambda Function
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'Security Group for the Kafka Deduplication Lambda'
+      GroupName: !Sub "${FunctionName}-${EnvironmentTag}"
+      VpcId: !Ref VpcId
+  
+  # 4. The Lambda Function itself, defined using SAM
+  DeduplicationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${FunctionName}-${EnvironmentTag}'
+      Handler: index.lambda_handler
+      Runtime: python3.12
+      MemorySize: !Ref FunctionMemorySize
+      Timeout: !Ref FunctionTimeout
+      Role: !GetAtt DeduplicationLambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds: [!Ref LambdaSecurityGroup]
+        SubnetIds: !Ref Subnets
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref TableName
+      InlineCode: |
+        import boto3
+        import os
+        import json
+        import base64
+        from botocore.exceptions import ClientError
+        from datetime import datetime, timedelta, timezone
+
+        DYNAMODB_TABLE_NAME = os.environ['DYNAMODB_TABLE_NAME']
+        dynamodb = boto3.resource('dynamodb')
+        table = dynamodb.Table(DYNAMODB_TABLE_NAME)
+
+        def lambda_handler(event, context):
+            for topic, records in event.get('records', {}).items():
+                for record in records:
+                    try:
+                        message_value_str = base64.b64decode(record['value']).decode('utf-8')
+                        message_body = json.loads(message_value_str)
+                        
+                        transaction_id = message_body.get('INV_TXNS_STG_ID')
+                        if not transaction_id:
+                            print("ERROR: Message is missing 'INV_TXNS_STG_ID'.")
+                            continue
+
+                        print(f"Attempting to process transaction ID: {transaction_id}")
+                        expiration_ts = int((datetime.now(timezone.utc) + timedelta(days=7)).timestamp())
+
+                        table.put_item(
+                            Item={
+                                'transactionId': str(transaction_id),
+                                'processedAt': datetime.now(timezone.utc).isoformat(),
+                                'expirationTime': expiration_ts
+                            },
+                            ConditionExpression='attribute_not_exists(transactionId)'
+                        )
+
+                        print(f"SUCCESS: New transaction. Executing business logic for ID: {transaction_id}")
+                        execute_business_logic(message_body)
+
+                    except ClientError as e:
+                        if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+                            print(f"DUPLICATE DETECTED: Transaction ID {transaction_id} already processed. Skipping.")
+                        else:
+                            print(f"ERROR: A DynamoDB error occurred: {e}")
+                            raise e
+                    except Exception as e:
+                        print(f"ERROR: An unexpected error occurred: {e}")
+                        raise e
+
+        def execute_business_logic(message):
+            print("Executing the main logic...")
+            # kafka processing resume? or business logic here?
+            pass
+
+  # 5. The Kafka trigger for the Lambda function
+  KafkaTriggerEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    DependsOn: DeduplicationFunction
+    Properties:
+      BatchSize: 1000
+      Enabled: true
+      FunctionName: !Ref DeduplicationFunction
+      SelfManagedEventSource:
+        Endpoints:
+          KafkaBootstrapServers:
+            - !Sub '{{resolve:secretsmanager:${KafkaSecretArn}:SecretString:BOOTSTRAP_SERVERS}}'
+      SelfManagedKafkaEventSourceConfig:
+        ConsumerGroupId: !Ref ConsumerGroupId
+      SourceAccessConfigurations:
+        - Type: "BASIC_AUTH"
+          URI: !Ref KafkaSecretArn
+        - Type: "VPC_SECURITY_GROUP"
+          URI: !Sub 'security_group:${LambdaSecurityGroup.GroupId}'
+      StartingPosition: "LATEST"
+      Topics:
+        - !Ref KafkaTopic
