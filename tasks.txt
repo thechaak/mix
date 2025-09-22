@@ -1,3 +1,101 @@
+import boto3
+import os
+from datetime import datetime, timedelta, timezone
+
+SNS_TOPIC_ARN = os.environ['SNS_TOPIC_ARN']
+PRIMARY_NAMESPACE = os.environ['PRIMARY_NAMESPACE']
+METRIC_NAME = os.environ['METRIC_NAME']
+
+CHECKS_CONFIG = {
+    'WID': { 'threshold': 1700, 'period': 900, 'dimension': {'Name': 'TagId', 'Value': 'WID'}, 'check_window_utc': None },
+    'SPR_SKU': { 'threshold': 1, 'period': 900, 'dimension': {'Name': 'TagId', 'Value': 'SPR_SKU'}, 'check_window_utc': (11, 18) },
+    'SPR_STORE': { 'threshold': 1, 'period': 900, 'dimension': {'Name': 'TagId', 'Value': 'SPR_STORE'}, 'check_window_utc': (11, 18) }
+}
+cloudwatch = boto3.client('cloudwatch')
+sns = boto3.client('sns')
+
+def lambda_handler(event, context):
+    now_utc = datetime.now(timezone.utc)
+    print(f"Running frequent checks at {now_utc.isoformat()}")
+
+    for name, config in CHECKS_CONFIG.items():
+        if config['check_window_utc']:
+            start_hour, end_hour = config['check_window_utc']
+            if not (start_hour <= now_utc.hour < end_hour):
+                print(f"Skipping '{name}' check outside of its active window.")
+                continue
+        
+        print(f"Performing check for '{name}'...")
+        process_check(name, config, now_utc)
+    
+    return {'statusCode': 200, 'body': 'Checks complete.'}
+
+def process_check(name, config, now_utc):
+    response = cloudwatch.get_metric_data(
+        MetricDataQueries=[{
+            'Id': 'm1',
+            'MetricStat': {
+                'Metric': { 'Namespace': PRIMARY_NAMESPACE, 'MetricName': METRIC_NAME, 'Dimensions': [config['dimension']] },
+                'Period': config['period'], 'Stat': 'Sum'
+            }, 'ReturnData': True,
+        }],
+        StartTime=now_utc - timedelta(seconds=config['period']), EndTime=now_utc
+    )
+    
+    values = response['MetricDataResults'][0]['Values']
+    
+    if not values:
+        # message = f"ALERT: Service Stalled! No '{name}' data received in the last {config['period'] // 60} minutes."
+        message = f'''{{
+                "AlarmName": CALLOUT- "{name}" FTS ,
+                "AlarmDescription": "Service Stalled! No '{name}' data received in the last {config['period'] // 60} minutes",
+                "AWSAccountId": "{boto3.client('sts').get_caller_identity().get('Account')}",
+                "AlarmConfigurationUpdatedTimestamp": "{now_utc}",
+                "NewStateValue": "ALARM",
+                "NewStateReason": "Application ERROR",
+                "StateChangeTime": "{now_utc}",
+                "Region": "eu-west-1",
+                "AlarmArn": "{os.environ['SNS_TOPIC_ARN']}",
+                "OldStateValue": "OK",
+                "OKActions": [],
+                "AlarmActions": ["{os.environ['SNS_TOPIC_ARN']}"],
+                "InsufficientDataActions": [],
+                "Trigger": {{
+                "MetricName": "{os.environ['METRIC_NAME']}",
+                "Namespace": "{os.environ['PRIMARY_NAMESPACE']}",
+                "StatisticType": "Statistic",
+                "Statistic": "SUM",
+                "Unit": null, 
+                "Dimensions": [
+                    {{
+                    "value": '{name}',
+                    "name": "TagId"
+                    }}
+                ],
+                "Period": 900,
+                "EvaluationPeriods": 1,
+                "ComparisonOperator": "LessThanOrEqualToThreshold",
+                "Threshold": 1.0,
+                "TreatMissingData": "breaching",
+                "EvaluateLowSampleCountPercentile": ""
+                }}
+            }}'''
+
+        subject = f"COSMOS ALARM: {name} Stalled"
+        print(message)
+        sns.publish(TopicArn=SNS_TOPIC_ARN, Subject=subject, Message=message)
+    else:
+        latest_value = values[0]
+        if latest_value < config['threshold']:
+            message = f"ALERT: Low Throughput! '{name}' file count was {int(latest_value)}, which is below the threshold of {config['threshold']}."
+            subject = f"COSMOS ALARM: {name} Low Count"
+            print(message)
+            sns.publish(TopicArn=SNS_TOPIC_ARN, Subject=subject, Message=message)
+        else:
+            print(f"OK: '{name}' count was {int(latest_value)}, which is at or above the threshold.")
+------
+
+
 kakfa duplicaiton solution using lambda---
 
 To solve the duplicate transaction issue, the most robust and standard solution is to build an idempotent service. This means your processing system can receive the same message multiple times but will only act on it once, effectively preventing duplicates.
