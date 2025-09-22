@@ -1,3 +1,128 @@
+updated for below:
+
+---
+import boto3
+import os
+from datetime import datetime, timedelta, timezone
+
+SNS_TOPIC_ARN = os.environ['SNS_TOPIC_ARN']
+PRIMARY_NAMESPACE = os.environ['PRIMARY_NAMESPACE']
+METRIC_NAME = os.environ['METRIC_NAME']
+
+CHECKS_CONFIG = {
+    'WID': {
+        'threshold': 1700, 'period': 900, 'dimension': {'Name': 'TagId', 'Value': 'WID'},
+        'check_window_utc': None,
+        'evaluation_periods': 1,
+        'comparison_operator': 'LessThanThreshold',
+        'treat_missing_data': 'breaching',
+        'evaluate_low_sample_count_percentile': ''
+    },
+    'SPR_SKU': {
+        'threshold': 1, 'period': 900, 'dimension': {'Name': 'TagId', 'Value': 'SPR_SKU'},
+        'check_window_utc': (11, 18),
+        'evaluation_periods': 1,
+        'comparison_operator': 'LessThanThreshold',
+        'treat_missing_data': 'breaching',
+        'evaluate_low_sample_count_percentile': ''
+    },
+    'SPR_STORE': {
+        'threshold': 1, 'period': 900, 'dimension': {'Name': 'TagId', 'Value': 'SPR_STORE'},
+        'check_window_utc': (11, 18),
+        'evaluation_periods': 1,
+        'comparison_operator': 'LessThanThreshold',
+        'treat_missing_data': 'breaching',
+        'evaluate_low_sample_count_percentile': ''
+    }
+}
+
+cloudwatch = boto3.client('cloudwatch')
+sns = boto3.client('sns')
+sts = boto3.client('sts')
+AWS_ACCOUNT_ID = sts.get_caller_identity().get('Account')
+
+
+def lambda_handler(event, context):
+    now_utc = datetime.now(timezone.utc)
+    print(f"Running frequent checks at {now_utc.isoformat()}")
+
+    for name, config in CHECKS_CONFIG.items():
+        if config['check_window_utc']:
+            start_hour, end_hour = config['check_window_utc']
+            if not (start_hour <= now_utc.hour < end_hour):
+                print(f"Skipping '{name}' check outside of its active window.")
+                continue
+        
+        print(f"Performing check for '{name}'...")
+        process_check(name, config, now_utc)
+    
+    return {'statusCode': 200, 'body': 'Checks complete.'}
+
+def process_check(name, config, now_utc):
+    response = cloudwatch.get_metric_data(
+        MetricDataQueries=[{
+            'Id': 'm1',
+            'MetricStat': {
+                'Metric': { 'Namespace': PRIMARY_NAMESPACE, 'MetricName': METRIC_NAME, 'Dimensions': [config['dimension']] },
+                'Period': config['period'], 'Stat': 'Sum'
+            }, 'ReturnData': True,
+        }],
+        StartTime=now_utc - timedelta(seconds=config['period']), EndTime=now_utc
+    )
+    
+    values = response['MetricDataResults'][0]['Values']
+    
+    if not values:
+        message = f'''{{
+            "AlarmName": "CALLOUT- {name} FTS",
+            "AlarmDescription": "Service Stalled! No '{name}' data received in the last {config['period'] // 60} minutes",
+            "AWSAccountId": "{AWS_ACCOUNT_ID}",
+            "AlarmConfigurationUpdatedTimestamp": "{now_utc}",
+            "NewStateValue": "ALARM",
+            "NewStateReason": "Application ERROR",
+            "StateChangeTime": "{now_utc}",
+            "Region": "{os.environ.get('AWS_REGION', 'eu-west-1')}",
+            "AlarmArn": "{SNS_TOPIC_ARN}",
+            "OldStateValue": "OK",
+            "OKActions": [],
+            "AlarmActions": ["{SNS_TOPIC_ARN}"],
+            "InsufficientDataActions": [],
+            "Trigger": {{
+                "MetricName": "{METRIC_NAME}",
+                "Namespace": "{PRIMARY_NAMESPACE}",
+                "StatisticType": "Statistic",
+                "Statistic": "SUM",
+                "Unit": null,
+                "Dimensions": [
+                    {{
+                        "value": "{name}",
+                        "name": "TagId"
+                    }}
+                ],
+                "Period": {config['period']},
+                "EvaluationPeriods": {config['evaluation_periods']},
+                "ComparisonOperator": "{config['comparison_operator']}",
+                "Threshold": {float(config['threshold'])},
+                "TreatMissingData": "{config['treat_missing_data']}",
+                "EvaluateLowSampleCountPercentile": "{config['evaluate_low_sample_count_percentile']}"
+            }}
+        }}'''
+
+        subject = f"COSMOS ALARM: {name} Stalled"
+        print(message)
+        sns.publish(TopicArn=SNS_TOPIC_ARN, Subject=subject, Message=message)
+    else:
+        latest_value = values[0]
+        if latest_value < config['threshold']:
+            message = f"ALERT: Low Throughput! '{name}' file count was {int(latest_value)}, which is below the threshold of {config['threshold']}."
+            subject = f"COSMOS ALARM: {name} Low Count"
+            print(message)
+            sns.publish(TopicArn=SNS_TOPIC_ARN, Subject=subject, Message=message)
+        else:
+            print(f"OK: '{name}' count was {int(latest_value)}, which is at or above the threshold.")
+----
+
+
 import boto3
 import os
 from datetime import datetime, timedelta, timezone
