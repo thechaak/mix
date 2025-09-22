@@ -1,9 +1,10 @@
----old cf template--
+--- new cf template with pytohn---
+
 
 AWSTemplateFormatVersion: '2010-09-09'
-Description: A robust monitoring solution using EventBridge and Lambda for
-  COSMOS File Transfer Service. Handles WID, SPR (time-windowed), and EOD checks
-  with precise, automated logic.
+Description: >-
+  A robust monitoring solution using EventBridge and Lambda for COSMOS File Transfer Service.
+  Handles WID, SPR (time-windowed), and EOD checks with precise, automated logic.
 
 Parameters:
   AlarmSnsTopicArn:
@@ -28,9 +29,6 @@ Parameters:
     Default: ccoe/js-developer
 
 Resources:
-  #---------------------------------------------------#
-  # --- IAM Role (Shared by both Lambda functions) ---
-  #---------------------------------------------------#
   MonitoringLambdaRole:
     Type: AWS::IAM::Role
     Properties:
@@ -54,15 +52,14 @@ Resources:
                   - logs:PutLogEvents
                 Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
               - Effect: Allow
-                Action: cloudwatch:GetMetricData
+                Action:
+                  - cloudwatch:GetMetricData
+                  - sts:GetCallerIdentity
                 Resource: '*'
               - Effect: Allow
                 Action: sns:Publish
                 Resource: !Ref AlarmSnsTopicArn
 
-  #--------------------------------------------------------------------#
-  # --- Monitor 1: Frequent Checks for WID & SPR (Every 15 mins) ---
-  #--------------------------------------------------------------------#
   FrequentMonitorLambda:
     Type: AWS::Lambda::Function
     DependsOn: MonitoringLambdaRole
@@ -88,12 +85,36 @@ Resources:
           METRIC_NAME = os.environ['METRIC_NAME']
 
           CHECKS_CONFIG = {
-              'WID': { 'threshold': 1700, 'period': 900, 'dimension': {'Name': 'TagId', 'Value': 'WID'}, 'check_window_utc': None },
-              'SPR_SKU': { 'threshold': 1, 'period': 900, 'dimension': {'Name': 'TagId', 'Value': 'SPR_SKU'}, 'check_window_utc': (11, 18) },
-              'SPR_STORE': { 'threshold': 1, 'period': 900, 'dimension': {'Name': 'TagId', 'Value': 'SPR_STORE'}, 'check_window_utc': (11, 18) }
+              'WID': {
+                  'threshold': 1700, 'period': 900, 'dimension': {'Name': 'TagId', 'Value': 'WID'},
+                  'check_window_utc': None,
+                  'evaluation_periods': 1,
+                  'comparison_operator': 'LessThanThreshold',
+                  'treat_missing_data': 'breaching',
+                  'evaluate_low_sample_count_percentile': ''
+              },
+              'SPR_SKU': {
+                  'threshold': 1, 'period': 900, 'dimension': {'Name': 'TagId', 'Value': 'SPR_SKU'},
+                  'check_window_utc': (11, 18),
+                  'evaluation_periods': 1,
+                  'comparison_operator': 'LessThanThreshold',
+                  'treat_missing_data': 'breaching',
+                  'evaluate_low_sample_count_percentile': ''
+              },
+              'SPR_STORE': {
+                  'threshold': 1, 'period': 900, 'dimension': {'Name': 'TagId', 'Value': 'SPR_STORE'},
+                  'check_window_utc': (11, 18),
+                  'evaluation_periods': 1,
+                  'comparison_operator': 'LessThanThreshold',
+                  'treat_missing_data': 'breaching',
+                  'evaluate_low_sample_count_percentile': ''
+              }
           }
+
           cloudwatch = boto3.client('cloudwatch')
           sns = boto3.client('sns')
+          sts = boto3.client('sts')
+          AWS_ACCOUNT_ID = sts.get_caller_identity().get('Account')
 
           def lambda_handler(event, context):
               now_utc = datetime.now(timezone.utc)
@@ -105,10 +126,10 @@ Resources:
                       if not (start_hour <= now_utc.hour < end_hour):
                           print(f"Skipping '{name}' check outside of its active window.")
                           continue
-
+                  
                   print(f"Performing check for '{name}'...")
                   process_check(name, config, now_utc)
-
+              
               return {'statusCode': 200, 'body': 'Checks complete.'}
 
           def process_check(name, config, now_utc):
@@ -122,11 +143,45 @@ Resources:
                   }],
                   StartTime=now_utc - timedelta(seconds=config['period']), EndTime=now_utc
               )
-
+              
               values = response['MetricDataResults'][0]['Values']
-
+              
               if not values:
-                  message = f"ALERT: Service Stalled! No '{name}' data received in the last {config['period'] // 60} minutes."
+                  message = f'''{{
+                      "AlarmName": "CALLOUT- {name} FTS",
+                      "AlarmDescription": "Service Stalled! No '{name}' data received in the last {config['period'] // 60} minutes",
+                      "AWSAccountId": "{AWS_ACCOUNT_ID}",
+                      "AlarmConfigurationUpdatedTimestamp": "{now_utc.isoformat()}",
+                      "NewStateValue": "ALARM",
+                      "NewStateReason": "Application ERROR",
+                      "StateChangeTime": "{now_utc.isoformat()}",
+                      "Region": "{os.environ.get('AWS_REGION', 'eu-west-1')}",
+                      "AlarmArn": "{SNS_TOPIC_ARN}",
+                      "OldStateValue": "OK",
+                      "OKActions": [],
+                      "AlarmActions": ["{SNS_TOPIC_ARN}"],
+                      "InsufficientDataActions": [],
+                      "Trigger": {{
+                          "MetricName": "{METRIC_NAME}",
+                          "Namespace": "{PRIMARY_NAMESPACE}",
+                          "StatisticType": "Statistic",
+                          "Statistic": "SUM",
+                          "Unit": null,
+                          "Dimensions": [
+                              {{
+                                  "value": "{name}",
+                                  "name": "TagId"
+                              }}
+                          ],
+                          "Period": {config['period']},
+                          "EvaluationPeriods": {config['evaluation_periods']},
+                          "ComparisonOperator": "{config['comparison_operator']}",
+                          "Threshold": {float(config['threshold'])},
+                          "TreatMissingData": "{config['treat_missing_data']}",
+                          "EvaluateLowSampleCountPercentile": "{config['evaluate_low_sample_count_percentile']}"
+                      }}
+                  }}'''
+
                   subject = f"COSMOS ALARM: {name} Stalled"
                   print(message)
                   sns.publish(TopicArn=SNS_TOPIC_ARN, Subject=subject, Message=message)
@@ -158,9 +213,6 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn: !GetAtt FrequentScheduleRule.Arn
 
-  #-------------------------------------------------------------#
-  # --- Monitor 2: EOD Check (Runs on specific schedules) ---
-  #-------------------------------------------------------------#
   EodMonitorLambda:
     Type: AWS::Lambda::Function
     DependsOn: MonitoringLambdaRole
@@ -185,9 +237,15 @@ Resources:
           EOD_NAMESPACE = os.environ['EOD_NAMESPACE']
           METRIC_NAME = os.environ['METRIC_NAME']
 
-          EOD_CONFIG = { 'dimension': {'Name': 'TagId', 'Value': 'EOD'}, 'threshold': 1750, 'period': 86400 }
+          EOD_CONFIG = {
+              'dimension': {'Name': 'TagId', 'Value': 'EOD'}, 'threshold': 1750, 'period': 86400,
+              'evaluation_periods': 1, 'comparison_operator': 'LessThanThreshold', 'treat_missing_data': 'breaching',
+              'evaluate_low_sample_count_percentile': ''
+          }
           cloudwatch = boto3.client('cloudwatch')
           sns = boto3.client('sns')
+          sts = boto3.client('sts')
+          AWS_ACCOUNT_ID = sts.get_caller_identity().get('Account')
 
           def lambda_handler(event, context):
               now_utc = datetime.now(timezone.utc)
@@ -203,25 +261,58 @@ Resources:
                   }],
                   StartTime=now_utc - timedelta(seconds=EOD_CONFIG['period']), EndTime=now_utc
               )
-
+              
               values = response['MetricDataResults'][0]['Values']
-
+              
               if not values or values[0] < EOD_CONFIG['threshold']:
                   count = int(values[0]) if values else 0
-                  message = f"ALERT: EOD Threshold Not Met! Total file count in the last 24 hours was {count}, which is below the threshold of {EOD_CONFIG['threshold']}."
+                  message = f'''{{
+                      "AlarmName": "CALLOUT- EOD FTS",
+                      "AlarmDescription": "EOD Threshold Not Met! Total file count in the last 24 hours was {count}, which is below the threshold of {EOD_CONFIG['threshold']}.",
+                      "AWSAccountId": "{AWS_ACCOUNT_ID}",
+                      "AlarmConfigurationUpdatedTimestamp": "{now_utc.isoformat()}",
+                      "NewStateValue": "ALARM",
+                      "NewStateReason": "Application ERROR",
+                      "StateChangeTime": "{now_utc.isoformat()}",
+                      "Region": "{os.environ.get('AWS_REGION', 'eu-west-1')}",
+                      "AlarmArn": "{SNS_TOPIC_ARN}",
+                      "OldStateValue": "OK",
+                      "OKActions": [],
+                      "AlarmActions": ["{SNS_TOPIC_ARN}"],
+                      "InsufficientDataActions": [],
+                      "Trigger": {{
+                          "MetricName": "{METRIC_NAME}",
+                          "Namespace": "{EOD_NAMESPACE}",
+                          "StatisticType": "Statistic",
+                          "Statistic": "SUM",
+                          "Unit": null,
+                          "Dimensions": [
+                              {{
+                                  "value": "EOD",
+                                  "name": "TagId"
+                              }}
+                          ],
+                          "Period": {EOD_CONFIG['period']},
+                          "EvaluationPeriods": {EOD_CONFIG['evaluation_periods']},
+                          "ComparisonOperator": "{EOD_CONFIG['comparison_operator']}",
+                          "Threshold": {float(EOD_CONFIG['threshold'])},
+                          "TreatMissingData": "{EOD_CONFIG['treat_missing_data']}",
+                          "EvaluateLowSampleCountPercentile": "{EOD_CONFIG['evaluate_low_sample_count_percentile']}"
+                      }}
+                  }}'''
                   subject = "COSMOS ALARM: EOD Threshold Not Met"
                   print(message)
                   sns.publish(TopicArn=SNS_TOPIC_ARN, Subject=subject, Message=message)
               else:
                   print(f"OK: EOD count was {int(values[0])}, which is at or above the threshold.")
-
+              
               return {'statusCode': 200, 'body': 'EOD Check complete.'}
 
   EodRuleMonFriSun:
     Type: AWS::Events::Rule
     Properties:
       Description: Triggers the EOD monitor at 11:30 PM BST on Mon, Tue, Wed, Thu, Fri, Sun
-      ScheduleExpression: cron(30 22 ? * MON,TUE,WED,THU,FRI,SUN *) # 22:30 UTC
+      ScheduleExpression: cron(30 22 ? * MON,TUE,WED,THU,FRI,SUN *)
       State: ENABLED
       Targets:
         - Arn: !GetAtt EodMonitorLambda.Arn
@@ -239,7 +330,7 @@ Resources:
     Type: AWS::Events::Rule
     Properties:
       Description: Triggers the EOD monitor at 12:30 AM Sunday BST (for Saturday's data)
-      ScheduleExpression: cron(30 23 ? * SAT *) # Saturday at 23:30 UTC
+      ScheduleExpression: cron(30 23 ? * SAT *)
       State: ENABLED
       Targets:
         - Arn: !GetAtt EodMonitorLambda.Arn
